@@ -147,8 +147,6 @@ export default {
         this.accessToken = tokenResponse.data.access_token;
         this.id_token = tokenResponse.data.id_token;
         this.refreshToken = tokenResponse.data.refresh_token;
-        console.log(tokenResponse);
-
         // Emit the authenticate event
         this.$emit('authenticate', 'google', {
           accessToken: this.accessToken,

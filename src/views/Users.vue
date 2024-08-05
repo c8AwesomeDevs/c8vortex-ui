@@ -237,6 +237,8 @@
 </style>
 <script>
 import axios from "axios";
+
+import { msalInstance } from "vue-msal-browser"
 import Swal from "sweetalert2";
 
 export default {
@@ -311,121 +313,107 @@ export default {
     };
   },
   mounted() {
-    let store = JSON.parse(localStorage.getItem("user"));
-    axios({
-      url: process.env.VUE_APP_BASEURL + "/users",
-      method: "GET",
-      headers: {
-        Authorization: "Bearer " + store.token,
+    const storage = JSON.parse(localStorage.getItem("user"));
+    if(storage.user.account_type == 'microsoft'){
+      let store = JSON.parse(localStorage.getItem("user"));
+      let tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+      if (store && store.token && new Date(tokenExp.tokenExpiry) > new Date()) {
+        // Token is valid, make the request
+        this.makeAuthenticatedRequest(store.token, store.user.id);
+      } else {
+        // Token is expired, refresh it
+        this.refreshTokenAndMakeRequest(store.user.id);
+      }
+    }else{
+      let store = JSON.parse(localStorage.getItem("user"));
+      axios({
+        url: process.env.VUE_APP_BASEURL + "/users",
+        method: "GET",
+        headers: {
+          Authorization: "Bearer " + store.token,
+        },
+        params: {
+        user_id: store.user.id
       },
-      params: {
-      // Example of sending data as query parameters
-      // Replace 'paramName' with your actual parameter names and values
-      user_id: store.user.id
-    },
-    })
-      .then((res) => {
-        this.subscription = JSON.parse(localStorage.getItem("user")).user.subscription.subscription_type;
+      })
+        .then((res) => {
+          this.subscription = JSON.parse(localStorage.getItem("user")).user.subscription.subscription_type;
 
+          this.users = res.data.map((u) => {
+            u.created_at = new Date(u.created_at).toLocaleDateString();
+            return u;
+          });
+        })
+        .catch((err) => {
+          this.validation_dialog = true;
+          this.dialogMessage = 'Unauthorized';
+        });
+    }
+  },
+  methods: {
+    async makeAuthenticatedRequest(token, userId) {
+      try {
+        const res = await axios({
+          url: process.env.VUE_APP_BASEURL + "/users",
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+          params: {
+            user_id: userId
+          },
+        });
+        this.subscription = JSON.parse(localStorage.getItem("user")).user.subscription.subscription_type;
         this.users = res.data.map((u) => {
           u.created_at = new Date(u.created_at).toLocaleDateString();
           return u;
         });
-      })
-      .catch((err) => {
+      } catch (err) {
         this.validation_dialog = true;
         this.dialogMessage = 'Unauthorized';
-        // console.log(err);
-        // const statusCode = err.response.status;
-        // // console.log(statusCode);
-        // if (statusCode == 404 || statusCode == 500 || statusCode == 401) {
-        //   let timerInterval;
-        //   Swal.fire({
-        //     title: "Login Session Expired!",
-        //     html: "Your about to logout in <b></b> seconds.",
-        //     timer: 5000,
-        //     icon: "warning",
-        //     confirmButtonText: "Ok",
-        //     confirmButtonColor: "#d33",
-        //     allowOutsideClick: false, // Prevent clicking outside the popup to close
-        //     allowEscapeKey: false,
-        //     focusConfirm: false, // Disable autofocus on the confirmation button
-        //     timerProgressBar: true,
-        //     didOpen: () => {
-        //       // Add custom font styles to the title and message
-        //       const titleElement = Swal.getTitle();
-        //       titleElement.style.fontFamily = "Calibri";
-        //       titleElement.style.fontSize = "24px";
-
-        //       const messageElement = Swal.getHtmlContainer();
-        //       messageElement.style.fontFamily = "Calibri";
-        //       messageElement.style.fontSize = "16px";
-
-        //       // Add custom styling to the icon to position it at the top left corner
-        //       const iconElement = Swal.getIcon();
-        //       iconElement.style.position = "relative";
-        //       iconElement.style.top = "0px";
-        //       iconElement.style.fontSize = "5px";
-        //       iconElement.style.right = "220px";
-
-        //       // Add custom styling to the confirm button to position it at the bottom right
-        //       const confirmButton = Swal.getConfirmButton();
-        //       confirmButton.style.position = "relative";
-        //       confirmButton.style.bottom = "0px";
-        //       confirmButton.style.left = "180px";
-        //       confirmButton.style.autofocus = "none";
-
-        //       const b = messageElement.querySelector("b");
-        //       timerInterval = setInterval(() => {
-        //         const remainingTime = Math.ceil(Swal.getTimerLeft() / 1000); // Convert remaining time to seconds and round up
-        //         b.textContent = remainingTime;
-        //       }, 100);
-        //     },
-        //     willClose: () => {
-        //       clearInterval(timerInterval);
-        //     },
-        //   }).then((result) => {
-        //     // User clicked the "OK" button, handle the closing logic
-        //     localStorage.removeItem("user");
-        //     this.$router.push({ name: "Welcome" });
-        //   });
-        // } else {
-        //   Swal.fire({
-        //     title: "Something went wrong!",
-        //     html: "Please contact your administrator",
-        //     icon: "warning",
-        //     confirmButtonText: "Ok",
-        //     confirmButtonColor: "#d33",
-        //     focusConfirm: false, // Disable autofocus on the confirmation button
-        //     didOpen: () => {
-        //       // Add custom font styles to the title and message
-        //       const titleElement = Swal.getTitle();
-        //       titleElement.style.fontFamily = "Calibri";
-        //       titleElement.style.fontSize = "24px";
-
-        //       const messageElement = Swal.getHtmlContainer();
-        //       messageElement.style.fontFamily = "Calibri";
-        //       messageElement.style.fontSize = "16px";
-
-        //       // Add custom styling to the confirm button to position it at the bottom right
-        //       const confirmButton = Swal.getConfirmButton();
-        //       confirmButton.style.position = "relative";
-        //       confirmButton.style.bottom = "0px";
-        //       confirmButton.style.left = "180px";
-        //       confirmButton.style.autofocus = "none";
-
-        //       // Add custom styling to the icon to position it at the top left corner
-        //       const iconElement = Swal.getIcon();
-        //       iconElement.style.position = "relative";
-        //       iconElement.style.top = "0px";
-        //       iconElement.style.fontSize = "5px";
-        //       iconElement.style.right = "220px";
-        //     },
-        //   });
-        // }
-      });
-  },
-  methods: {
+      }
+    },
+    async refreshTokenAndMakeRequest(userId) {
+      try {
+        await this.acquireTokens(); // Refresh the token
+        let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
+        if (store && store.token) {
+          this.makeAuthenticatedRequest(store.token, userId);
+        } else {
+          this.validation_dialog = true;
+          this.dialogMessage = 'Unauthorized';
+        }
+      } catch (error) {
+        console.error('Error refreshing tokens:', error);
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
+      }
+    },
+    async acquireTokens() {
+      try {
+        const account = msalInstance.getAllAccounts()[0];
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ["user.read", "offline_access"],
+          account: account
+        });
+        const tokenExpiry = response.expiresOn;
+        let user = JSON.parse(localStorage.getItem("user"));
+        if (user) {
+          user.token = response.accessToken;
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+        const tokenExp = {
+          token_expiry: tokenExpiry,
+        }
+        localStorage.setItem("tokenExp", JSON.stringify(tokenExp));
+        // console.log('token refresh successfully');
+      } catch (error) {
+        console.error('Error acquiring tokens:', error);
+        await msalInstance.loginRedirect({
+          scopes: ["user.read", "offline_access"]
+        });
+      }
+    },
     addUsersDialog() {
       this.UsersDialog = true;
     },

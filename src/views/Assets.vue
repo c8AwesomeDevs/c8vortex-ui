@@ -1146,6 +1146,8 @@ import DateRangePickers from "@/components/home/DateRangePickers.vue";
 import Papa from "papaparse";
 import H2ScanPage from "@/components/H2Scan/H2ScanPage.vue";
 
+import { msalInstance } from "vue-msal-browser"
+
 export default {
   beforeRouteEnter(to, from, next) {
     document.title = `C8 Vortex - ${to.meta.title || ""}`;
@@ -1231,120 +1233,53 @@ export default {
     };
   },
   mounted() {
-    let store = JSON.parse(localStorage.getItem("user"));
-    axios({
-      url: process.env.VUE_APP_BASEURL + "/hierarchy",
-      method: "GET",
-      headers: {
-        Authorization: "Bearer " + store.token,
-      },
-      params: {
-      // Example of sending data as query parameters
-      // Replace 'paramName' with your actual parameter names and values
-      user_id: store.user.id
-    },
-    })
-      .then((response) => {
-        this.items = response.data;
-        this.account_level = JSON.parse(localStorage.getItem("user")).user.account_level;
-        // console.log(this.items);
-      })
-      .catch((err) => {
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
-        // const statusCode = err.response.status;
-        // // console.log(statusCode);
-        // if (statusCode == 404 || statusCode == 500 || statusCode == 401) {
-        //   let timerInterval;
-        //   Swal.fire({
-        //     title: "Login Session Expired!",
-        //     html: "Your about to logout in <b></b> seconds.",
-        //     timer: 5000,
-        //     icon: "warning",
-        //     confirmButtonText: "Ok",
-        //     confirmButtonColor: "#d33",
-        //     allowOutsideClick: false, // Prevent clicking outside the popup to close
-        //     allowEscapeKey: false,
-        //     focusConfirm: false, // Disable autofocus on the confirmation button
-        //     timerProgressBar: true,
-        //     didOpen: () => {
-        //       // Add custom font styles to the title and message
-        //       const titleElement = Swal.getTitle();
-        //       titleElement.style.fontFamily = "Calibri";
-        //       titleElement.style.fontSize = "24px";
+    const storage = JSON.parse(localStorage.getItem("user"));
+      if(storage.user.account_type == 'microsoft'){
+        let store = JSON.parse(localStorage.getItem("user"));
+        let tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+        if (store && store.token && new Date(tokenExp.tokenExpiry) > new Date()) {
+            // Token is valid, make the request
+            this.makeAuthenticatedRequest(store.token, store.user.id);
+          } else {
+            // Token is expired, refresh it
+            this.refreshTokenAndMakeRequest(store.user.id);
+          }
 
-        //       const messageElement = Swal.getHtmlContainer();
-        //       messageElement.style.fontFamily = "Calibri";
-        //       messageElement.style.fontSize = "16px";
+          // Other initialization
+          this.reversedYearsList;
+          this.symbol = this.symbols[0];
+      }else{
+       
+        let store = JSON.parse(localStorage.getItem("user"));
+          axios({
+            url: process.env.VUE_APP_BASEURL + "/hierarchy",
+            method: "GET",
+            headers: {
+              Authorization: "Bearer " + store.token,
+            },
+            params: {
+            // Example of sending data as query parameters
+            // Replace 'paramName' with your actual parameter names and values
+            user_id: store.user.id
+          },
+          })
+            .then((response) => {
+              this.items = response.data;
+              this.account_level = JSON.parse(localStorage.getItem("user")).user.account_level;
+              // console.log(this.items);
+            })
+            .catch((err) => {
+              this.validation_dialog = true;
+              this.dialogMessage = 'Unauthorized';
+            });
 
-        //       // Add custom styling to the icon to position it at the top left corner
-        //       const iconElement = Swal.getIcon();
-        //       iconElement.style.position = "relative";
-        //       iconElement.style.top = "0px";
-        //       iconElement.style.fontSize = "5px";
-        //       iconElement.style.right = "220px";
-
-        //       // Add custom styling to the confirm button to position it at the bottom right
-        //       const confirmButton = Swal.getConfirmButton();
-        //       confirmButton.style.position = "relative";
-        //       confirmButton.style.bottom = "0px";
-        //       confirmButton.style.left = "180px";
-        //       confirmButton.style.autofocus = "none";
-
-        //       const b = messageElement.querySelector("b");
-        //       timerInterval = setInterval(() => {
-        //         const remainingTime = Math.ceil(Swal.getTimerLeft() / 1000); // Convert remaining time to seconds and round up
-        //         b.textContent = remainingTime;
-        //       }, 100);
-        //     },
-        //     willClose: () => {
-        //       clearInterval(timerInterval);
-        //     },
-        //   }).then((result) => {
-        //     // User clicked the "OK" button, handle the closing logic
-        //     localStorage.removeItem("user");
-        //     this.$router.push({ name: "Welcome" });
-        //   });
-        // } else {
-        //   Swal.fire({
-        //     title: "Something went wrong!",
-        //     html: "Please contact your administrator",
-        //     icon: "warning",
-        //     confirmButtonText: "Ok",
-        //     confirmButtonColor: "#d33",
-        //     focusConfirm: false, // Disable autofocus on the confirmation button
-        //     didOpen: () => {
-        //       // Add custom font styles to the title and message
-        //       const titleElement = Swal.getTitle();
-        //       titleElement.style.fontFamily = "Calibri";
-        //       titleElement.style.fontSize = "24px";
-
-        //       const messageElement = Swal.getHtmlContainer();
-        //       messageElement.style.fontFamily = "Calibri";
-        //       messageElement.style.fontSize = "16px";
-
-        //       // Add custom styling to the confirm button to position it at the bottom right
-        //       const confirmButton = Swal.getConfirmButton();
-        //       confirmButton.style.position = "relative";
-        //       confirmButton.style.bottom = "0px";
-        //       confirmButton.style.left = "180px";
-        //       confirmButton.style.autofocus = "none";
-
-        //       // Add custom styling to the icon to position it at the top left corner
-        //       const iconElement = Swal.getIcon();
-        //       iconElement.style.position = "relative";
-        //       iconElement.style.top = "0px";
-        //       iconElement.style.fontSize = "5px";
-        //       iconElement.style.right = "220px";
-        //     },
-        //   });
-        // }
-      });
-
-    this.reversedYearsList;
-    this.symbol = this.symbols[0];
-   
+          this.reversedYearsList;
+          this.symbol = this.symbols[0];
+      }
   },
+  
+
+  
   computed: {
     computedAge() {
       this.startUp = this.date ? new Date(this.date) : new Date();
@@ -1389,47 +1324,66 @@ export default {
   },
   
   methods: {
-    // openAdh(){
-    //   this.ADH_dialog = true;
-    // },
-    // closeAdh(){
-    //   this.ADH_dialog = false;
-    // },
-    // getAdhDetails(){
-    //     axios({
-    //             url: process.env.VUE_APP_BASEURL + "/elements/" + this.element.id,
-    //             method: "GET",
-    //             headers: {
-    //                 Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
-    //             },
-    //         }).then((response) => {
-    //             this.adh_config = response.data.adh_config;
-    //             // console.log(this.adh_config)
-    //         })
-    //             .catch((err) => {
-    //                 console.log(err);
-    //             });
-    //   },
-    // addConfig(new_adh){
-    //   this.adh_loading = true;
-    //   axios({
-    //             url: process.env.VUE_APP_BASEURL + '/elements/' + this.element.id + '/adh_config',
-    //             method: 'POST',
-    //             data: new_adh,
-    //             headers: {
-    //                 'Content-Type': 'application/x-www-form-urlencoded',
-    //                 'Authorization': 'Bearer ' + JSON.parse(localStorage.getItem('user')).token
-    //             }
-    //         }).then(response => {
-    //             this.getAdhDetails();
-    //             this.new_adh = {};
-    //             this.adh_loading = false;
-    //             this.ADH_dialog = false;
-    //         }).catch(err => {
-    //             console.log(err)
-    //             this.adh_loading = false;
-    //         });
-    // },
+    async makeAuthenticatedRequest(token, userId) {
+      try {
+        const response = await axios({
+          url: process.env.VUE_APP_BASEURL + "/hierarchy",
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+          params: {
+            user_id: userId
+          },
+        });
+        this.items = response.data;
+        this.account_level = JSON.parse(localStorage.getItem("user")).user.account_level;
+      } catch (err) {
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
+      }
+    },
+    async refreshTokenAndMakeRequest(userId) {
+      try {
+        await this.acquireTokens(); // Refresh the token
+        let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
+        if (store && store.token) {
+          this.makeAuthenticatedRequest(store.token, userId);
+        } else {
+          this.validation_dialog = true;
+          this.dialogMessage = 'Unauthorized';
+        }
+      } catch (error) {
+        console.error('Error refreshing tokens:', error);
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
+      }
+    },
+    async acquireTokens() {
+      try {
+        const account = msalInstance.getAllAccounts()[0];
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ["user.read", "offline_access"],
+          account: account
+        });
+        const tokenExpiry = response.expiresOn;
+        let user = JSON.parse(localStorage.getItem("user"));
+        if (user) {
+          user.token = response.accessToken;
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+        const tokenExp = {
+          token_expiry: tokenExpiry,
+        }
+        localStorage.setItem("tokenExp", JSON.stringify(tokenExp));
+        // console.log('token refresh successfully');
+      } catch (error) {
+        console.error('Error acquiring tokens:', error);
+        await msalInstance.loginRedirect({
+          scopes: ["user.read", "offline_access"]
+        });
+      }
+    },
     showgassesdata_dialog() {
        if(this.adh_config.length == 0){
             this.validation_dialog = true;

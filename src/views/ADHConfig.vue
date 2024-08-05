@@ -98,6 +98,8 @@
 </style>
 <script>
 import axios from "axios";
+
+import { msalInstance } from "vue-msal-browser"
 export default {
   name: 'ADHConfig',
 
@@ -125,97 +127,104 @@ export default {
   },
 
   mounted() {
-  let store = JSON.parse(localStorage.getItem("user"));
-  // axios({
-  //   url: process.env.VUE_APP_BASEURL + '/adh-config',
-  //   method: "GET",
-  //   headers: {
-  //     Authorization: "Bearer " + store.token,
-  //   },
-  //   // If you need to send data with GET request, use params instead
-  //   params: {
-  //     // Example of sending data as query parameters
-  //     // Replace 'paramName' with your actual parameter names and values
-  //     user_id: store.user.id
-  //   }
-  // }).then((response) => {
-  //   this.adh_config = response.data;
-  //   // console.log(this.adh_config);
-  // }).catch((err) => {
-  //   this.validation_dialog = true;
-  //   this.dialogMessage = 'Unauthorized';
-  // });
-  let test = JSON.parse(localStorage.getItem("token_expiry"));
-  if (store && store.token && new Date(test.tokenExpiry) > new Date()) {
-    // Token is valid, make the request
+  const storage = JSON.parse(localStorage.getItem("user"));
+  if(storage.user.account_type == 'microsoft'){
+      let store = JSON.parse(localStorage.getItem("user"));
+      let tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+      if (store && store.token && new Date(tokenExp.tokenExpiry) > new Date()) {
+        // Token is valid, make the request
 
-    // console.log(store.token);
-    this.makeAuthenticatedRequest(store.token, store.user.id);
-  } else {
-    // Token is expired, refresh it
-    this.refreshTokenAndMakeRequest(store.user.id);
-  }
-
-},
-
-
-  methods: {
-
-    async makeAuthenticatedRequest(token, userId) {
-    try {
-      const response = await axios({
+        // console.log(store.token);
+        this.makeAuthenticatedRequest(store.token, store.user.id);
+      } else {
+        // Token is expired, refresh it
+        this.refreshTokenAndMakeRequest(store.user.id);
+      }
+    }else{
+      let store = JSON.parse(localStorage.getItem("user"));
+      axios({
         url: process.env.VUE_APP_BASEURL + '/adh-config',
         method: "GET",
         headers: {
-          Authorization: "Bearer " + token,
+          Authorization: "Bearer " + store.token,
         },
+        // If you need to send data with GET request, use params instead
         params: {
-          user_id: userId
+          // Example of sending data as query parameters
+          // Replace 'paramName' with your actual parameter names and values
+          user_id: store.user.id
         }
+      }).then((response) => {
+        this.adh_config = response.data;
+        // console.log(this.adh_config);
+      }).catch((err) => {
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
       });
-      this.adh_config = response.data;
-    } catch (err) {
-      this.validation_dialog = true;
-      this.dialogMessage = 'Unauthorized';
     }
+
   },
-  async refreshTokenAndMakeRequest(userId) {
-    try {
-      await this.acquireTokens(); // This will refresh the token
-      let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
-      if (store && store.token) {
-        this.makeAuthenticatedRequest(store.token, userId);
-      } else {
+  methods: {
+
+    async makeAuthenticatedRequest(token, userId) {
+      try {
+        const response = await axios({
+          url: process.env.VUE_APP_BASEURL + '/adh-config',
+          method: "GET",
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+          params: {
+            user_id: userId
+          }
+        });
+        this.adh_config = response.data;
+      } catch (err) {
         this.validation_dialog = true;
         this.dialogMessage = 'Unauthorized';
       }
-    } catch (error) {
-      console.error('Error refreshing tokens:', error);
-      this.validation_dialog = true;
-      this.dialogMessage = 'Unauthorized';
-    }
-  },
-  async acquireTokens() {
-    try {
-      const account = msalInstance.getAllAccounts()[0];
-      const response = await msalInstance.acquireTokenSilent({
-        scopes: ["user.read", "offline_access"],
-        account: account
-      });
-      const tokenExpiry = response.expiresOn; // Update the expiry time
-      const user = {
-        token: response.accessToken,
-        user: response.account,
-        tokenExpiry: tokenExpiry
-      };
-      localStorage.setItem("user", JSON.stringify(user));
-    } catch (error) {
-      console.error('Error acquiring tokens:', error);
-      await msalInstance.loginRedirect({
-        scopes: ["user.read", "offline_access"]
-      });
-    }
-  },
+    },
+    async refreshTokenAndMakeRequest(userId) {
+      try {
+        await this.acquireTokens(); // This will refresh the token
+        let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
+        if (store && store.token) {
+          this.makeAuthenticatedRequest(store.token, userId);
+        } else {
+          this.validation_dialog = true;
+          this.dialogMessage = 'Unauthorized';
+        }
+      } catch (error) {
+        console.error('Error refreshing tokens:', error);
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
+      }
+    },
+    async acquireTokens() {
+      try {
+        const account = msalInstance.getAllAccounts()[0];
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ["user.read", "offline_access"],
+          account: account
+        });
+        const tokenExpiry = response.expiresOn;
+        let user = JSON.parse(localStorage.getItem("user"));
+        if (user) {
+          user.token = response.accessToken;
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+        const tokenExp = {
+          token_expiry: tokenExpiry,
+        }
+        localStorage.setItem("tokenExp", JSON.stringify(tokenExp));
+        // console.log('token refresh successfully');
+      } catch (error) {
+        console.error('Error acquiring tokens:', error);
+        await msalInstance.loginRedirect({
+          scopes: ["user.read", "offline_access"]
+        });
+      }
+    },
     addConfig() {
       this.adh_loading = true;
       this.user = JSON.parse(localStorage.getItem("user")).user;

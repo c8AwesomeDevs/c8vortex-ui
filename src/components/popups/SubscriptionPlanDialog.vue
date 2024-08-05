@@ -241,6 +241,8 @@
 import axios from "axios";
 import { subscriptionMixin } from "@/mixins/subscriptionMixin.js";
 import { StripeCheckout } from "@vue-stripe/vue-stripe";
+
+import { msalInstance } from "vue-msal-browser"
 export default {
   name: "SubscriptionsDialog",
   props: ["dialog"],
@@ -297,25 +299,6 @@ export default {
       this.$emit("subscribe", type, this.subscriptions[type].price_id);
     },
     upgrade(type) {
-      // this.demo_dialog = false;
-      // this.success_url = process.env.VUE_APP_BASEURL + "/payment/success?r=thank-you&session_id={CHECKOUT_SESSION_ID}";
-      // this.cancel_url = process.env.VUE_APP_CLIENTURL + "#/dashboard/assets";
-      // this.reference_id = this.reference_id = JSON.parse(localStorage.getItem("user")).user.id.toString() + ":" + type;
-      // this.email = this.user.email;
-      // this.items = [
-      //   {
-      //     price: this.subscriptions[type].price_id,
-      //     quantity: 1,
-      //   },
-      // ];
-
-      // this.validation_dialog = true;
-      // return
-
-      // this.$refs.checkoutRef.redirectToCheckout();
-      // this.validation_dialog = true;
-      // this.demo_dialog = false;
-      // return;
       this.loading = true;
       axios({
         url: process.env.VUE_APP_BASEURL + "/checkout",
@@ -353,32 +336,99 @@ export default {
           alert(JSON.stringify(err));
         });
     },
-    checkSub(type) {
-      let store = JSON.parse(localStorage.getItem("user"));
-      axios({
-        url: process.env.VUE_APP_BASEURL + "/subscriptions/check",
-        method: "GET",
-        params: { type: type, user_id: store.user.id},
-        headers: {
-          Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
-        },
-        
-      })
-        .then((res) => {
-          // console.log(res.data);
-          // window.open(res.data, "_self");
-          if (res.data.id != undefined) {
-            this.current_subscription_details = res.data;
-            // this.current_subscription_dialog = true;
-          }
-          // this.loading = false;
-        })
-        .catch((err) => {
-          // alert(JSON.stringify(err));
+    async checkSub(type) {
+    const storage = JSON.parse(localStorage.getItem("user"));
+      if(storage.user.account_type == 'microsoft'){
+        let store = JSON.parse(localStorage.getItem("user"));
+        let tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+        if (store && store.token && new Date(tokenExp.tokenExpiry) > new Date()) {
+          // Token is valid, make the request
+          this.makeCheckSubRequest(type, store.token, store.user.id);
+        } else {
+          // Token is expired, refresh it
+          await this.refreshTokenAndCheckSub(type);
+        }
+      }else{
+        let store = JSON.parse(localStorage.getItem("user"));
+          axios({
+            url: process.env.VUE_APP_BASEURL + "/subscriptions/check",
+            method: "GET",
+            params: { type: type, user_id: store.user.id},
+            headers: {
+              Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
+            },
+            
+          })
+            .then((res) => {
+              if (res.data.id != undefined) {
+                this.current_subscription_details = res.data;
+              }
+            })
+            .catch((err) => {
+              this.validation_dialog = true;
+              this.dialogMessage = 'Unauthorized';
+            });
+        }
+      },
+    async makeCheckSubRequest(type, token, userId) {
+      try {
+        const res = await axios({
+          url: process.env.VUE_APP_BASEURL + "/subscriptions/check",
+          method: "GET",
+          params: { type: type, user_id: userId },
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        });
+        if (res.data.id !== undefined) {
+          this.current_subscription_details = res.data;
+        }
+      } catch (err) {
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
+      }
+    },
+    async refreshTokenAndCheckSub(type) {
+      try {
+        await this.acquireTokens(); // Refresh the token
+        let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
+        if (store && store.token) {
+          this.makeCheckSubRequest(type, store.token, store.user.id);
+        } else {
           this.validation_dialog = true;
           this.dialogMessage = 'Unauthorized';
-        });
+        }
+      } catch (error) {
+        console.error('Error refreshing tokens:', error);
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
+      }
     },
-  },
+    async acquireTokens() {
+      try {
+        const account = msalInstance.getAllAccounts()[0];
+        const response = await msalInstance.acquireTokenSilent({
+          scopes: ["user.read", "offline_access"],
+          account: account
+        });
+        const tokenExpiry = response.expiresOn;
+        let user = JSON.parse(localStorage.getItem("user"));
+        if (user) {
+          user.token = response.accessToken;
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+        const tokenExp = {
+          token_expiry: tokenExpiry,
+        }
+        localStorage.setItem("tokenExp", JSON.stringify(tokenExp));
+        // console.log('token refresh successfully');
+      } catch (error) {
+        console.error('Error acquiring tokens:', error);
+        await msalInstance.loginRedirect({
+          scopes: ["user.read", "offline_access"]
+        });
+      }
+    },
+  }
 };
 </script>

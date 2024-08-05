@@ -137,7 +137,8 @@ export default {
   }),
   mounted() {
     this.user = JSON.parse(localStorage.getItem("user")).user;
-    // console.log(this.user);
+    // let token = JSON.parse(localStorage.getItem("user")).token;
+    // console.log(token);
     // color theme
     if (localStorage.getItem("dark-mode") === "true") {
       this.$vuetify.theme.dark = true;
