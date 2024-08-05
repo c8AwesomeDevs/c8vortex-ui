@@ -392,6 +392,7 @@ export default {
     },
 
     authenticate(provider, response) {
+      this.login_dialog = true;
       this.inactiveSubs_user = null; // prep variable so we can show and hide "manage subscription" button
       const today = new Date();
 
@@ -404,23 +405,27 @@ export default {
         this.googleLoading = true;
         console.log(response);
         let token;
+        let refresh_token;
 
-        if (response.Oc != undefined) {
-            token = response.Oc.id_token || response.Jc.id_token;
-        } else if (response.Rc != undefined) {
-            token = response.Rc.id_token || response.Jc.id_token;
-        } else if(response.Sc != undefined){
-            token = response.Sc.id_token || response.Jc.id_token;
-        } else if(response.Tc != undefined){
-            token = response.Tc.id_token || response.Jc.id_token;
-        }else if(response.Qc != undefined){
-            token = response.Qc.id_token || response.Jc.id_token;
-        }
+        // if (response.Oc != undefined) {
+        //     token = response.Oc.id_token || response.Jc.id_token;
+        // } else if (response.Rc != undefined) {
+        //     token = response.Rc.id_token || response.Jc.id_token;
+        // } else if(response.Sc != undefined){
+        //     token = response.Sc.id_token || response.Jc.id_token;
+        // } else if(response.Tc != undefined){
+        //     token = response.Tc.id_token || response.Jc.id_token;
+        // }else if(response.Qc != undefined){
+        //     token = response.Qc.id_token || response.Jc.id_token;
+        // }
+        
+        token = response.id_token;
+        refresh_token = response.refreshToken;
 
         axios({
             method: "POST",
             url: process.env.VUE_APP_BASEURL + "/google/auth",
-            data: { token: token },
+            data: { token: token, refresh_token:refresh_token },
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
         })
             .then((res) => {
@@ -462,13 +467,15 @@ export default {
                 // alert(err.response.data);
             });
       } else if (provider === "microsoft") {
-        // console.log(response)
+      
         this.microsoftLoading = true;
         let token = response.accessToken;
+        let refresh_token = response.refreshToken;
+        console.log(response)
         axios({
           method: "POST",
           url: process.env.VUE_APP_BASEURL + "/microsoft/auth",
-          data: { token: token },
+          data: { token: token, refresh_token:refresh_token },
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
         }).then((res) => {
             window.localStorage.setItem("user", JSON.stringify(res.data));

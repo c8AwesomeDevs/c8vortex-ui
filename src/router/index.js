@@ -26,11 +26,11 @@ const routes = [
     component: ThankYou,
     meta: { title: 'ThankYou' },
   },
-  // {
-  //   path: "/login",
-  //   name: "Login",
-  //   component: Login,
-  // },
+  {
+    path: "/login",
+    name: "Login",
+    component: Login,
+  },
   {
     path: "/dashboard",
     name: "Dashboard",
@@ -53,11 +53,6 @@ const routes = [
         component: Assets,
         meta: { title: 'subscriptions-dialog'},
       },
-      // {
-      //   path: 'subscription',
-      //   name: 'Subscription',
-      //   component: Subscription
-      // },
       {
         path: 'users',
         name: 'Users',
@@ -70,10 +65,9 @@ const routes = [
         component: ADHConfig,
         meta: { title: 'ADH Configurations' },
       },
-     
     ]
   }
-]
+];
 
 const router = new VueRouter({
   mode: 'history',
@@ -81,44 +75,29 @@ const router = new VueRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  // Check if the route being accessed is /dashboard/users
-  if (to.matched.some((record) => record.name === "Users")) {
-    // Get the user role from localStorage
-    const user = JSON.parse(localStorage.getItem("user"));
-    const userRole = user ? user.user.account_level : null;
+  const isAuthenticated = JSON.parse(localStorage.getItem("user"));
 
-    // Check if the user's role is 'company_user'
+  // Check for user role access control
+  if (to.matched.some(record => record.name === "Users")) {
+    const userRole = isAuthenticated ? isAuthenticated.user.account_level : null;
+
     if (userRole === "company_user") {
-      // If the user's role is 'company_user', prevent access and redirect to a different route or show an error message
-      next("/dashboard/assets"); // Redirect to the dashboard or another suitable route
-    } else {
-      // If the user's role is not 'company_user', allow access to the route
-      next();
+      // Redirect if the user role is 'company_user'
+      return next("/dashboard/assets");
     }
-  } else {
-    // If the route being accessed is not /dashboard/users, allow access to other routes
-    next();
   }
 
+  // Authentication and access control
+  if (!isAuthenticated && to.name !== 'Welcome' && to.name !== 'Login') {
+    // Redirect to Welcome if not authenticated and trying to access other pages
+    return next({ name: 'Welcome' });
+  } else if (isAuthenticated && (to.name === 'Welcome' || to.name === 'Login')) {
+    // Redirect authenticated users from Welcome or Login to Assets
+    return next({ name: 'Assets' });
+  }
 
-  const isAuthenticated = JSON.parse(localStorage.getItem("user"));
- // If the user is trying to access any route before the dashboard and is already authenticated, redirect them to the dashboard
-//  const routesBeforeDashboard = ['Welcome'];
-
- if (to.name !== 'Welcome' && !isAuthenticated) {
-  // Redirect to login if not authenticated and trying to access other pages
-  next({ name: 'Welcome' });
-} else if (to.name === 'Welcome' && isAuthenticated){
-  next({name: 'Assets'});
-}else{
+  // Proceed with the navigation
   next();
-}
-//  if (!routesBeforeDashboard.includes(to.name) && !isAuthenticated) {
-//    next("Welcome"); // Redirect to the dashboard or another suitable route
-//  } else {
-//    next(); // Allow access to other routes
-//  }
-
 });
 
 export default router;

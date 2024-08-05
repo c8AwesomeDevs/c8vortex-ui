@@ -53,7 +53,7 @@ export default {
         // Format the current time
         this.time = `${currentHour}:${currentMinute}:${currentSecond}`;
 
-        console.log("Current time:", this.time);
+        // console.log("Current time:", this.time);
 
     },
     methods : {

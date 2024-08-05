@@ -137,7 +137,7 @@ export default {
   }),
   mounted() {
     this.user = JSON.parse(localStorage.getItem("user")).user;
-    // console.log(this.user);z
+    // console.log(this.user);
     // color theme
     if (localStorage.getItem("dark-mode") === "true") {
       this.$vuetify.theme.dark = true;
@@ -205,18 +205,14 @@ export default {
   },
   methods: {
     async signOut() {
-      localStorage.removeItem("user");
-      this.$router.push({ name: "Welcome" });
-
-      // if(this.user.account_type == 'microsoft'){
-      //       const accounts = await msalInstance.getAllAccounts();
-      //     if (accounts.length > 0) {
-      //       await this.$msal.logoutPopup({
-      //         account: accounts[0],
-      //       });
-      //       localStorage.removeItem("user");
-      //     }
-      //   }
+      if(this.user.account_type == 'microsoft'){
+         msalInstance.logoutRedirect();
+         localStorage.removeItem("user");
+          this.$router.push({ name: "Welcome" });
+        }else{
+          localStorage.removeItem("user");
+          this.$router.push({ name: "Welcome" });
+        }
     },
     closeSubscriptionsDialog() {
       this.subscriptionplan_dialog = false;

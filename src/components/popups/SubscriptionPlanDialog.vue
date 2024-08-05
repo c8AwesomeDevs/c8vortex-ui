@@ -354,13 +354,15 @@ export default {
         });
     },
     checkSub(type) {
+      let store = JSON.parse(localStorage.getItem("user"));
       axios({
         url: process.env.VUE_APP_BASEURL + "/subscriptions/check",
         method: "GET",
-        params: { type: type },
+        params: { type: type, user_id: store.user.id},
         headers: {
           Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
         },
+        
       })
         .then((res) => {
           // console.log(res.data);
@@ -373,6 +375,8 @@ export default {
         })
         .catch((err) => {
           // alert(JSON.stringify(err));
+          this.validation_dialog = true;
+          this.dialogMessage = 'Unauthorized';
         });
     },
   },

@@ -311,12 +311,18 @@ export default {
     };
   },
   mounted() {
+    let store = JSON.parse(localStorage.getItem("user"));
     axios({
       url: process.env.VUE_APP_BASEURL + "/users",
       method: "GET",
       headers: {
-        Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
+        Authorization: "Bearer " + store.token,
       },
+      params: {
+      // Example of sending data as query parameters
+      // Replace 'paramName' with your actual parameter names and values
+      user_id: store.user.id
+    },
     })
       .then((res) => {
         this.subscription = JSON.parse(localStorage.getItem("user")).user.subscription.subscription_type;
@@ -327,94 +333,96 @@ export default {
         });
       })
       .catch((err) => {
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
         // console.log(err);
-        const statusCode = err.response.status;
-        // console.log(statusCode);
-        if (statusCode == 404 || statusCode == 500 || statusCode == 401) {
-          let timerInterval;
-          Swal.fire({
-            title: "Login Session Expired!",
-            html: "Your about to logout in <b></b> seconds.",
-            timer: 5000,
-            icon: "warning",
-            confirmButtonText: "Ok",
-            confirmButtonColor: "#d33",
-            allowOutsideClick: false, // Prevent clicking outside the popup to close
-            allowEscapeKey: false,
-            focusConfirm: false, // Disable autofocus on the confirmation button
-            timerProgressBar: true,
-            didOpen: () => {
-              // Add custom font styles to the title and message
-              const titleElement = Swal.getTitle();
-              titleElement.style.fontFamily = "Calibri";
-              titleElement.style.fontSize = "24px";
+        // const statusCode = err.response.status;
+        // // console.log(statusCode);
+        // if (statusCode == 404 || statusCode == 500 || statusCode == 401) {
+        //   let timerInterval;
+        //   Swal.fire({
+        //     title: "Login Session Expired!",
+        //     html: "Your about to logout in <b></b> seconds.",
+        //     timer: 5000,
+        //     icon: "warning",
+        //     confirmButtonText: "Ok",
+        //     confirmButtonColor: "#d33",
+        //     allowOutsideClick: false, // Prevent clicking outside the popup to close
+        //     allowEscapeKey: false,
+        //     focusConfirm: false, // Disable autofocus on the confirmation button
+        //     timerProgressBar: true,
+        //     didOpen: () => {
+        //       // Add custom font styles to the title and message
+        //       const titleElement = Swal.getTitle();
+        //       titleElement.style.fontFamily = "Calibri";
+        //       titleElement.style.fontSize = "24px";
 
-              const messageElement = Swal.getHtmlContainer();
-              messageElement.style.fontFamily = "Calibri";
-              messageElement.style.fontSize = "16px";
+        //       const messageElement = Swal.getHtmlContainer();
+        //       messageElement.style.fontFamily = "Calibri";
+        //       messageElement.style.fontSize = "16px";
 
-              // Add custom styling to the icon to position it at the top left corner
-              const iconElement = Swal.getIcon();
-              iconElement.style.position = "relative";
-              iconElement.style.top = "0px";
-              iconElement.style.fontSize = "5px";
-              iconElement.style.right = "220px";
+        //       // Add custom styling to the icon to position it at the top left corner
+        //       const iconElement = Swal.getIcon();
+        //       iconElement.style.position = "relative";
+        //       iconElement.style.top = "0px";
+        //       iconElement.style.fontSize = "5px";
+        //       iconElement.style.right = "220px";
 
-              // Add custom styling to the confirm button to position it at the bottom right
-              const confirmButton = Swal.getConfirmButton();
-              confirmButton.style.position = "relative";
-              confirmButton.style.bottom = "0px";
-              confirmButton.style.left = "180px";
-              confirmButton.style.autofocus = "none";
+        //       // Add custom styling to the confirm button to position it at the bottom right
+        //       const confirmButton = Swal.getConfirmButton();
+        //       confirmButton.style.position = "relative";
+        //       confirmButton.style.bottom = "0px";
+        //       confirmButton.style.left = "180px";
+        //       confirmButton.style.autofocus = "none";
 
-              const b = messageElement.querySelector("b");
-              timerInterval = setInterval(() => {
-                const remainingTime = Math.ceil(Swal.getTimerLeft() / 1000); // Convert remaining time to seconds and round up
-                b.textContent = remainingTime;
-              }, 100);
-            },
-            willClose: () => {
-              clearInterval(timerInterval);
-            },
-          }).then((result) => {
-            // User clicked the "OK" button, handle the closing logic
-            localStorage.removeItem("user");
-            this.$router.push({ name: "Welcome" });
-          });
-        } else {
-          Swal.fire({
-            title: "Something went wrong!",
-            html: "Please contact your administrator",
-            icon: "warning",
-            confirmButtonText: "Ok",
-            confirmButtonColor: "#d33",
-            focusConfirm: false, // Disable autofocus on the confirmation button
-            didOpen: () => {
-              // Add custom font styles to the title and message
-              const titleElement = Swal.getTitle();
-              titleElement.style.fontFamily = "Calibri";
-              titleElement.style.fontSize = "24px";
+        //       const b = messageElement.querySelector("b");
+        //       timerInterval = setInterval(() => {
+        //         const remainingTime = Math.ceil(Swal.getTimerLeft() / 1000); // Convert remaining time to seconds and round up
+        //         b.textContent = remainingTime;
+        //       }, 100);
+        //     },
+        //     willClose: () => {
+        //       clearInterval(timerInterval);
+        //     },
+        //   }).then((result) => {
+        //     // User clicked the "OK" button, handle the closing logic
+        //     localStorage.removeItem("user");
+        //     this.$router.push({ name: "Welcome" });
+        //   });
+        // } else {
+        //   Swal.fire({
+        //     title: "Something went wrong!",
+        //     html: "Please contact your administrator",
+        //     icon: "warning",
+        //     confirmButtonText: "Ok",
+        //     confirmButtonColor: "#d33",
+        //     focusConfirm: false, // Disable autofocus on the confirmation button
+        //     didOpen: () => {
+        //       // Add custom font styles to the title and message
+        //       const titleElement = Swal.getTitle();
+        //       titleElement.style.fontFamily = "Calibri";
+        //       titleElement.style.fontSize = "24px";
 
-              const messageElement = Swal.getHtmlContainer();
-              messageElement.style.fontFamily = "Calibri";
-              messageElement.style.fontSize = "16px";
+        //       const messageElement = Swal.getHtmlContainer();
+        //       messageElement.style.fontFamily = "Calibri";
+        //       messageElement.style.fontSize = "16px";
 
-              // Add custom styling to the confirm button to position it at the bottom right
-              const confirmButton = Swal.getConfirmButton();
-              confirmButton.style.position = "relative";
-              confirmButton.style.bottom = "0px";
-              confirmButton.style.left = "180px";
-              confirmButton.style.autofocus = "none";
+        //       // Add custom styling to the confirm button to position it at the bottom right
+        //       const confirmButton = Swal.getConfirmButton();
+        //       confirmButton.style.position = "relative";
+        //       confirmButton.style.bottom = "0px";
+        //       confirmButton.style.left = "180px";
+        //       confirmButton.style.autofocus = "none";
 
-              // Add custom styling to the icon to position it at the top left corner
-              const iconElement = Swal.getIcon();
-              iconElement.style.position = "relative";
-              iconElement.style.top = "0px";
-              iconElement.style.fontSize = "5px";
-              iconElement.style.right = "220px";
-            },
-          });
-        }
+        //       // Add custom styling to the icon to position it at the top left corner
+        //       const iconElement = Swal.getIcon();
+        //       iconElement.style.position = "relative";
+        //       iconElement.style.top = "0px";
+        //       iconElement.style.fontSize = "5px";
+        //       iconElement.style.right = "220px";
+        //     },
+        //   });
+        // }
       });
   },
   methods: {

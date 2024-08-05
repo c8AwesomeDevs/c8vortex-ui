@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="adh_config.length > 0" class="pa-3">
+    <div v-if="adh_config.length != 0" class="pa-3">
       <v-card>
         <v-toolbar dark dense color="red">
           ADH Configurations
@@ -30,8 +30,8 @@
         </v-card-text>
       </v-card>
     </div>
-    <v-container v-if="adh_config.length < 0" style="position: relative;">
-      <v-btn block depressed color="red darken-3" dark @click="addConfig">
+    <v-container v-if="adh_config.length == 0" style="position: relative;">
+      <v-btn :disabled="adh_loading" block depressed color="red darken-3" dark @click="addConfig">
         <v-icon>mdi-database-settings</v-icon>
         {{ adh_loading ? "Generating..." : "Generate ADH Configurations" }}
       </v-btn>
@@ -66,9 +66,36 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <v-dialog v-model="validation_dialog" max-width="450" min-width="400">
+      <template>
+        <v-card>
+          <div>
+            <span>
+              <v-icon color="orange" class="icon ml-3 mt-3"> mdi-alert-circle-outline </v-icon>
+              <span class="demo-check">
+                {{ dialogMessage }}
+              </span>
+            </span>
+          </div>
+          <v-card-actions class="justify-end">
+            <v-btn dark small color="red" text @click="validation_dialog = false">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </template>
+    </v-dialog>
   </div>
 </template>
-
+<style scope>
+.demo-check {
+  font-size: 13px;
+  white-space: pre;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 1em;
+  margin-right: 1em;
+}
+</style>
 <script>
 import axios from "axios";
 export default {
@@ -92,25 +119,103 @@ export default {
       adh_config: [], // Initialize as an empty array
       newAdhconfig: {},
       updatedAdhconfig: {},
+      validation_dialog: false,
+      dialogMessage:'',
     };
   },
 
   mounted() {
-    axios({
-      url: process.env.VUE_APP_BASEURL + '/adh-config',
-      method: "GET",
-      headers: {
-        Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
-      },
-    }).then((response) => {
-      this.adh_config = response.data;
-      console.log(this.adh_config);
-    }).catch((err) => {
-      alert(err.response);
-    });
-  },
+  let store = JSON.parse(localStorage.getItem("user"));
+  // axios({
+  //   url: process.env.VUE_APP_BASEURL + '/adh-config',
+  //   method: "GET",
+  //   headers: {
+  //     Authorization: "Bearer " + store.token,
+  //   },
+  //   // If you need to send data with GET request, use params instead
+  //   params: {
+  //     // Example of sending data as query parameters
+  //     // Replace 'paramName' with your actual parameter names and values
+  //     user_id: store.user.id
+  //   }
+  // }).then((response) => {
+  //   this.adh_config = response.data;
+  //   // console.log(this.adh_config);
+  // }).catch((err) => {
+  //   this.validation_dialog = true;
+  //   this.dialogMessage = 'Unauthorized';
+  // });
+  let test = JSON.parse(localStorage.getItem("token_expiry"));
+  if (store && store.token && new Date(test.tokenExpiry) > new Date()) {
+    // Token is valid, make the request
+
+    // console.log(store.token);
+    this.makeAuthenticatedRequest(store.token, store.user.id);
+  } else {
+    // Token is expired, refresh it
+    this.refreshTokenAndMakeRequest(store.user.id);
+  }
+
+},
+
 
   methods: {
+
+    async makeAuthenticatedRequest(token, userId) {
+    try {
+      const response = await axios({
+        url: process.env.VUE_APP_BASEURL + '/adh-config',
+        method: "GET",
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+        params: {
+          user_id: userId
+        }
+      });
+      this.adh_config = response.data;
+    } catch (err) {
+      this.validation_dialog = true;
+      this.dialogMessage = 'Unauthorized';
+    }
+  },
+  async refreshTokenAndMakeRequest(userId) {
+    try {
+      await this.acquireTokens(); // This will refresh the token
+      let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
+      if (store && store.token) {
+        this.makeAuthenticatedRequest(store.token, userId);
+      } else {
+        this.validation_dialog = true;
+        this.dialogMessage = 'Unauthorized';
+      }
+    } catch (error) {
+      console.error('Error refreshing tokens:', error);
+      this.validation_dialog = true;
+      this.dialogMessage = 'Unauthorized';
+    }
+  },
+  async acquireTokens() {
+    try {
+      const account = msalInstance.getAllAccounts()[0];
+      const response = await msalInstance.acquireTokenSilent({
+        scopes: ["user.read", "offline_access"],
+        account: account
+      });
+      const tokenExpiry = response.expiresOn; // Update the expiry time
+      const user = {
+        token: response.accessToken,
+        user: response.account,
+        tokenExpiry: tokenExpiry
+      };
+      localStorage.setItem("user", JSON.stringify(user));
+    } catch (error) {
+      console.error('Error acquiring tokens:', error);
+      await msalInstance.loginRedirect({
+        scopes: ["user.read", "offline_access"]
+      });
+    }
+  },
     addConfig() {
       this.adh_loading = true;
       this.user = JSON.parse(localStorage.getItem("user")).user;
@@ -126,7 +231,7 @@ export default {
       }).then((response) => {
         this.adh_loading = false;
         this.adh_config = [response.data.new_adh];  // Update the config
-        console.log(this.adh_config);
+        // console.log(this.adh_config);
       }).catch((err) => {
         alert(err.response);
         this.adh_loading = false;
@@ -154,7 +259,8 @@ export default {
         this.adh_config = [response.data]; // Update the local config
         console.log(this.adh_config);
       }).catch((err) => {
-        alert(err.response);
+        alert(err.response.message);
+        console.log(err.response)
         this.adh_loading = false;
         this.updateAdhDialog = false;
       });
