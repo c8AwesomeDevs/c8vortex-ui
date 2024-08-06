@@ -1135,7 +1135,6 @@ import TimePicker from "@/components/pickers/TimePicker.vue";
 import axios from "axios";
 import { assetMixin } from "@/mixins/AssetsLimitations.js";
 import { transformerMixin } from "@/mixins/TransformerMixin.js";
-import Swal from "sweetalert2";
 import DuvalsArea from "@/components/home/DuvalsArea.vue";
 import SummaryInterpretations from "@/components/home/SummaryInterpretations.vue";
 import OtherInterpretations from "@/components/home/OtherInterpretations.vue";
@@ -1145,9 +1144,9 @@ import { symbolMixin } from "@/mixins/symbolMixin.js";
 import DateRangePickers from "@/components/home/DateRangePickers.vue";
 import Papa from "papaparse";
 import H2ScanPage from "@/components/H2Scan/H2ScanPage.vue";
-
+import { refreshGoogleToken } from '@/utils/authUtils';
 import { msalInstance } from "vue-msal-browser"
-
+import { jwtDecode } from 'jwt-decode'; // Ensure jwt-decode is installed
 export default {
   beforeRouteEnter(to, from, next) {
     document.title = `C8 Vortex - ${to.meta.title || ""}`;
@@ -1233,51 +1232,14 @@ export default {
     };
   },
   mounted() {
-    const storage = JSON.parse(localStorage.getItem("user"));
-      if(storage.user.account_type == 'microsoft'){
-        let store = JSON.parse(localStorage.getItem("user"));
-        let tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
-        if (store && store.token && new Date(tokenExp.tokenExpiry) > new Date()) {
-            // Token is valid, make the request
-            this.makeAuthenticatedRequest(store.token, store.user.id);
-          } else {
-            // Token is expired, refresh it
-            this.refreshTokenAndMakeRequest(store.user.id);
-          }
-
-          // Other initialization
-          this.reversedYearsList;
-          this.symbol = this.symbols[0];
-      }else{
-       
-        let store = JSON.parse(localStorage.getItem("user"));
-          axios({
-            url: process.env.VUE_APP_BASEURL + "/hierarchy",
-            method: "GET",
-            headers: {
-              Authorization: "Bearer " + store.token,
-            },
-            params: {
-            // Example of sending data as query parameters
-            // Replace 'paramName' with your actual parameter names and values
-            user_id: store.user.id
-          },
-          })
-            .then((response) => {
-              this.items = response.data;
-              this.account_level = JSON.parse(localStorage.getItem("user")).user.account_level;
-              // console.log(this.items);
-            })
-            .catch((err) => {
-              this.validation_dialog = true;
-              this.dialogMessage = 'Unauthorized';
-            });
-
-          this.reversedYearsList;
-          this.symbol = this.symbols[0];
-      }
+    this.initializeAssets();
+    this.reversedYearsList;
+    this.symbol = this.symbols[0];
+    this.startTokenRefreshChecker();
   },
-  
+  beforeDestroy() {
+    clearInterval(this.tokenRefreshInterval); // Clear interval when component is destroyed
+  },
 
   
   computed: {
@@ -1324,41 +1286,86 @@ export default {
   },
   
   methods: {
-    async makeAuthenticatedRequest(token, userId) {
+    async initializeAssets() {
+      const storage = JSON.parse(localStorage.getItem("user"));
+      if (!storage || !storage.user) return;
+
+      const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+
+      if (storage.user.account_type === 'microsoft') {
+        await this.handleMicrosoftToken(storage, tokenExp);
+      } else if (storage.user.account_type === 'google') {
+        await this.handleGoogleToken(storage, tokenExp);
+      }
+    },
+
+    async handleMicrosoftToken(storage, tokenExp) {
+      if (this.isTokenValid(tokenExp.tokenExpiry)) {
+        await this.makeAuthenticatedRequest(storage.token);
+      } else {
+        await this.refreshTokenAndMakeRequest('microsoft');
+      }
+    },
+
+    async handleGoogleToken(storage, tokenExp) {
+      if (this.isTokenValid(tokenExp.tokenExpiry)) {
+        await this.makeAuthenticatedRequest(storage.token);
+      } else {
+        await this.refreshTokenAndMakeRequest('google');
+      }
+    },
+
+    isTokenValid(expiry) {
+      return new Date(expiry) > new Date();
+    },
+
+    async makeAuthenticatedRequest(token) {
       try {
         const response = await axios({
           url: process.env.VUE_APP_BASEURL + "/hierarchy",
           method: "GET",
           headers: {
-            Authorization: "Bearer " + token,
-          },
-          params: {
-            user_id: userId
+            Authorization: `Bearer ${token}`,
           },
         });
         this.items = response.data;
         this.account_level = JSON.parse(localStorage.getItem("user")).user.account_level;
       } catch (err) {
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
+        this.showUnauthorizedDialog();
       }
     },
-    async refreshTokenAndMakeRequest(userId) {
+
+    async refreshTokenAndMakeRequest(accountType, userId) {
       try {
-        await this.acquireTokens(); // Refresh the token
-        let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
-        if (store && store.token) {
-          this.makeAuthenticatedRequest(store.token, userId);
+        if (accountType === 'google') {
+          await this.refreshGoogleToken();
+        } else if (accountType === 'microsoft') {
+          await this.acquireTokens();
+        }
+        const storage = JSON.parse(localStorage.getItem("user"));
+        if (storage && storage.token) {
+          await this.makeAuthenticatedRequest(storage.token, userId);
         } else {
-          this.validation_dialog = true;
-          this.dialogMessage = 'Unauthorized';
+          this.showUnauthorizedDialog();
         }
       } catch (error) {
         console.error('Error refreshing tokens:', error);
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
+        this.showUnauthorizedDialog();
       }
     },
+
+    async refreshGoogleToken() {
+      const storage = JSON.parse(localStorage.getItem("user"));
+      const { id_token } = await refreshGoogleToken(storage.user.refresh_token);
+      let user = JSON.parse(localStorage.getItem("user"));
+      user.token = id_token;
+      localStorage.setItem("user", JSON.stringify(user));
+
+      const decodedToken = jwtDecode(id_token);
+      const tokenExpiry = new Date(decodedToken.exp * 1000).toISOString();
+      localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+    },
+
     async acquireTokens() {
       try {
         const account = msalInstance.getAllAccounts()[0];
@@ -1366,23 +1373,34 @@ export default {
           scopes: ["user.read", "offline_access"],
           account: account
         });
-        const tokenExpiry = response.expiresOn;
+        const tokenExpiry = response.expiresOn.toISOString();
         let user = JSON.parse(localStorage.getItem("user"));
         if (user) {
           user.token = response.accessToken;
           localStorage.setItem("user", JSON.stringify(user));
+          localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
         }
-        const tokenExp = {
-          token_expiry: tokenExpiry,
-        }
-        localStorage.setItem("tokenExp", JSON.stringify(tokenExp));
-        // console.log('token refresh successfully');
       } catch (error) {
         console.error('Error acquiring tokens:', error);
-        await msalInstance.loginRedirect({
-          scopes: ["user.read", "offline_access"]
-        });
+        await msalInstance.loginRedirect({ scopes: ["user.read", "offline_access"] });
       }
+    },
+
+    showUnauthorizedDialog() {
+      this.validation_dialog = true;
+      this.dialogMessage = 'Unauthorized';
+    },
+
+    startTokenRefreshChecker() {
+      this.tokenRefreshInterval = setInterval(() => {
+        const storage = JSON.parse(localStorage.getItem("user"));
+        const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+        if (storage && storage.user && tokenExp) {
+          if (!this.isTokenValid(tokenExp.tokenExpiry)) {
+            this.refreshTokenAndMakeRequest(storage.user.account_type);
+          }
+        }
+      }, this.refreshInterval);
     },
     showgassesdata_dialog() {
        if(this.adh_config.length == 0){
@@ -1439,17 +1457,27 @@ export default {
               return element.toUpperCase(); // If the element has less than two characters, capitalize all of them
           });
 
-          const capitalizedPath = capitalizedElements.join('\\'); // Join the elements back with backslashes
+          // let store = JSON.parse(localStorage.getItem("user")).user.company.company_name;
 
-          this.stream_id = capitalizedPath.replace(/\\/g, '');
+          // const capitalizedPath = capitalizedElements.join('\\'); // Join the elements back with backslashes
+          // this.stream_id = capitalizedPath.replace(/\\/g, '');
+          // console.log(this.stream_id);
+
+          // Retrieve the company name from localStorage
+          let store = JSON.parse(localStorage.getItem("user"));
+          let companyName = store.user.company.company_name.toUpperCase();
+
+          // Join the elements back with backslashes
+          const capitalizedPath = capitalizedElements.join('\\');
+
+          // Concatenate the company name with the capitalizedPath
+          const concatenatedPath = `${companyName}${capitalizedPath}`;
+
+          // Replace backslashes and assign to stream_id
+          this.stream_id = concatenatedPath.replace(/\\/g, '');
+
+          // Output the result
           console.log(this.stream_id);
-          // if(this.goTo == true){
-          //   this.tab = 2;
-          //   this.goTo = false;
-          // }else if (this.goTo == false){
-          //   this.tab = 0;
-          // }
-          this.getAdhDetails();
           this.tab = 2;
           this.loading = false;
         })
@@ -1509,6 +1537,7 @@ export default {
       this.confirm_dialog = true;
     },
     removeChildProcess() {
+      this.startTokenRefreshChecker();
       axios({
         url: process.env.VUE_APP_BASEURL + "/elements/" + this.element.id,
         method: "DELETE",
@@ -1527,6 +1556,7 @@ export default {
       this.updateElementModal = true;
     },
     updateElement() {
+      this.startTokenRefreshChecker();
       this.update_loading = true;
       axios({
         url: process.env.VUE_APP_BASEURL + "/elements/" + this.element.id,
@@ -1564,6 +1594,7 @@ export default {
       }
 
       this.save_loading = true;
+      this.startTokenRefreshChecker();
       axios({
         url: process.env.VUE_APP_BASEURL + "/elements/" + (this.element.id ? this.element.id : 0),
         method: "POST",
@@ -1597,6 +1628,7 @@ export default {
       }
 
       this.save_loading = true;
+      this.startTokenRefreshChecker();
       axios({
         url: process.env.VUE_APP_BASEURL + "/elements/" + (this.element.id ? this.element.id : 0),
         method: "POST",
@@ -1623,6 +1655,7 @@ export default {
 
     createAttributes(id) {
       this.loading = true;
+      this.startTokenRefreshChecker();
       axios({
         url: process.env.VUE_APP_BASEURL + "/elements/" + id + "/attributes",
         method: "POST",
@@ -1666,6 +1699,7 @@ export default {
         this.save_loading = true;
         this.attribute_value.company_id = this.element.company_id;
         this.attribute_value.asset_id = this.stream_id;
+        this.startTokenRefreshChecker();
         axios({
           url: process.env.VUE_APP_BASEURL + "/elements/" + this.element.id + "/attribute-values",
           method: "POST",
@@ -1705,6 +1739,7 @@ export default {
         this.save_loading = true;
         this.transformer.company_id = this.element.company_id;
         this.transformer.stream_id = this.stream_id;
+        this.startTokenRefreshChecker();
         axios({
           url: process.env.VUE_APP_BASEURL + "/elements/" + this.element.id + "/transformers",
           method: "POST",
@@ -1762,6 +1797,7 @@ export default {
     updateTransformerDetails() {
       if (this.validateTransformerDetails(this.transformer) === true) {
         this.save_loading = true;
+        this.startTokenRefreshChecker();
         axios({
           url: process.env.VUE_APP_BASEURL + "/elements/" + this.element.id + "/transformers",
           method: "PUT",
@@ -1825,6 +1861,7 @@ export default {
         //   .padStart(2, "0")}:${curr.getMinutes().toString().padStart(2, "0")}:${curr.getSeconds().toString().padStart(2, "0")}`;
 
         // fetch data from db based on datetime1 and datetime2...
+        this.startTokenRefreshChecker();
         axios({
           url: process.env.VUE_APP_BASEURL + "/elements/" + elementID + "/attribute-values",
           method: "GET",

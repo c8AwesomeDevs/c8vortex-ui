@@ -22,7 +22,37 @@
                                     <p class="font-weight-bold">Discover why C8 Vortex is the top transmission and
                                         distribution asset monitoring tool.</p>
                                 </div>
-                                <div class="demo-check">
+                                <!-- <v-row>
+                                    <div class="demo-check">
+
+                                    <v-col col="12" md="12">
+                                        <span class="check-item">
+                                        <v-icon color="green" class="mr-3">
+                                            mdi-check-circle
+                                        </v-icon>
+                                        Monitor and analyze critical equipment in real time.
+                                    </span>
+                                    </v-col>
+                                    <v-col col="12" md="12">
+                                        <span class="check-item">
+                                        <v-icon color="green" class="mr-3">
+                                            mdi-check-circle
+                                        </v-icon>
+                                        Maintain high efficiency, increase productivity, and reduce breakdowns.
+                                    </span>
+                                    </v-col>
+                                    <v-col col="12" md="12">
+                                        <span class="check-item">
+                                        <v-icon color="green" class="mr-3">
+                                            mdi-check-circle
+                                        </v-icon>
+                                        Includes a monitoring module for dissolved gas analysis, along with Duval's
+                                        diagnostic suite.
+                                    </span>
+                                    </v-col>
+                                    </div>
+                                </v-row> -->
+                                <div class="alignment">
                                     <span class="check-item">
                                         <v-icon color="green" class="mr-3">
                                             mdi-check-circle
@@ -162,6 +192,9 @@
     text-align: left;
     margin-left: 16px;
     font-size: 16px;
+}
+.alignment{
+    margin-left: 16px;
 }
 
 .check-item {

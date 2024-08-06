@@ -137,8 +137,15 @@ export default {
   }),
   mounted() {
     this.user = JSON.parse(localStorage.getItem("user")).user;
-    // let token = JSON.parse(localStorage.getItem("user")).token;
-    // console.log(token);
+    // let token = JSON.parse(localStorage.getItem("token_expiry"));
+
+    // let time = token.tokenExpiry;
+
+    // let date = new Date(time)
+
+    // let localdate = date.toLocaleString();
+
+    // console.log(localdate);
     // color theme
     if (localStorage.getItem("dark-mode") === "true") {
       this.$vuetify.theme.dark = true;

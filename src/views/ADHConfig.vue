@@ -98,8 +98,9 @@
 </style>
 <script>
 import axios from "axios";
-
+import { refreshGoogleToken } from '@/utils/authUtils';
 import { msalInstance } from "vue-msal-browser"
+import { jwtDecode } from 'jwt-decode'; // Ensure jwt-decode is installed
 export default {
   name: 'ADHConfig',
 
@@ -127,105 +128,127 @@ export default {
   },
 
   mounted() {
-  const storage = JSON.parse(localStorage.getItem("user"));
-  if(storage.user.account_type == 'microsoft'){
-      let store = JSON.parse(localStorage.getItem("user"));
-      let tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
-      if (store && store.token && new Date(tokenExp.tokenExpiry) > new Date()) {
-        // Token is valid, make the request
-
-        // console.log(store.token);
-        this.makeAuthenticatedRequest(store.token, store.user.id);
-      } else {
-        // Token is expired, refresh it
-        this.refreshTokenAndMakeRequest(store.user.id);
-      }
-    }else{
-      let store = JSON.parse(localStorage.getItem("user"));
-      axios({
-        url: process.env.VUE_APP_BASEURL + '/adh-config',
-        method: "GET",
-        headers: {
-          Authorization: "Bearer " + store.token,
-        },
-        // If you need to send data with GET request, use params instead
-        params: {
-          // Example of sending data as query parameters
-          // Replace 'paramName' with your actual parameter names and values
-          user_id: store.user.id
-        }
-      }).then((response) => {
-        this.adh_config = response.data;
-        // console.log(this.adh_config);
-      }).catch((err) => {
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
-      });
-    }
-
+    this.initializeADHconfig();
+    this.startTokenRefreshChecker();
+  },
+  beforeDestroy() {
+    clearInterval(this.tokenRefreshInterval); // Clear interval when component is destroyed
   },
   methods: {
+    async initializeADHconfig() {
+      const storage = JSON.parse(localStorage.getItem("user"));
+      if (!storage || !storage.user) return;
 
-    async makeAuthenticatedRequest(token, userId) {
-      try {
-        const response = await axios({
-          url: process.env.VUE_APP_BASEURL + '/adh-config',
-          method: "GET",
-          headers: {
-            Authorization: "Bearer " + token,
-          },
-          params: {
-            user_id: userId
-          }
-        });
-        this.adh_config = response.data;
-      } catch (err) {
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
+      const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+
+      if (storage.user.account_type === 'microsoft') {
+        await this.handleMicrosoftToken(storage, tokenExp);
+      } else if (storage.user.account_type === 'google') {
+        await this.handleGoogleToken(storage, tokenExp);
       }
     },
-    async refreshTokenAndMakeRequest(userId) {
+
+    async handleMicrosoftToken(storage, tokenExp) {
+      if (this.isTokenValid(tokenExp.tokenExpiry)) {
+        this.makeAuthenticatedRequest(storage.token);
+      } else {
+        await this.refreshTokenAndMakeRequest('microsoft');
+      }
+    },
+
+    async handleGoogleToken(storage, tokenExp) {
+      if (this.isTokenValid(tokenExp.tokenExpiry)) {
+        this.makeAuthenticatedRequest(storage.token);
+      } else {
+        await this.refreshTokenAndMakeRequest('google');
+      }
+    },
+
+    isTokenValid(expiry) {
+      return new Date(expiry) > new Date();
+    },
+
+    async refreshTokenAndMakeRequest(accountType) {
       try {
-        await this.acquireTokens(); // This will refresh the token
-        let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
-        if (store && store.token) {
-          this.makeAuthenticatedRequest(store.token, userId);
+        if (accountType === 'google') {
+          await this.refreshGoogleToken();
+        } else if (accountType === 'microsoft') {
+          await this.acquireTokens();
+        }
+        const storage = JSON.parse(localStorage.getItem("user"));
+        if (storage && storage.token) {
+          this.makeAuthenticatedRequest(storage.token);
         } else {
-          this.validation_dialog = true;
-          this.dialogMessage = 'Unauthorized';
+          this.showUnauthorizedDialog();
         }
       } catch (error) {
         console.error('Error refreshing tokens:', error);
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
+        this.showUnauthorizedDialog();
       }
     },
+
+    async refreshGoogleToken() {
+      const storage = JSON.parse(localStorage.getItem("user"));
+      const { id_token } = await refreshGoogleToken(storage.user.refresh_token);
+      let user = JSON.parse(localStorage.getItem("user"));
+      user.token = id_token;
+      localStorage.setItem("user", JSON.stringify(user));
+
+      const decodedToken = jwtDecode(id_token);
+      const tokenExpiry = new Date(decodedToken.exp * 1000).toISOString();
+      localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+    },
+
     async acquireTokens() {
       try {
         const account = msalInstance.getAllAccounts()[0];
         const response = await msalInstance.acquireTokenSilent({
           scopes: ["user.read", "offline_access"],
-          account: account
+          account
         });
-        const tokenExpiry = response.expiresOn;
+        const tokenExpiry = response.expiresOn.toISOString();
         let user = JSON.parse(localStorage.getItem("user"));
-        if (user) {
-          user.token = response.accessToken;
-          localStorage.setItem("user", JSON.stringify(user));
-        }
-        const tokenExp = {
-          token_expiry: tokenExpiry,
-        }
-        localStorage.setItem("tokenExp", JSON.stringify(tokenExp));
-        // console.log('token refresh successfully');
+        user.token = response.accessToken;
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+        console.log("token refresh successfullu!")
       } catch (error) {
         console.error('Error acquiring tokens:', error);
-        await msalInstance.loginRedirect({
-          scopes: ["user.read", "offline_access"]
-        });
+        await msalInstance.loginRedirect({ scopes: ["user.read", "offline_access"] });
       }
     },
+
+    async makeAuthenticatedRequest(token) {
+      try {
+        const response = await axios({
+          url: process.env.VUE_APP_BASEURL + '/adh-config',
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        this.adh_config = response.data;
+      } catch (err) {
+        this.showUnauthorizedDialog();
+      }
+    },
+
+    showUnauthorizedDialog() {
+      this.validation_dialog = true;
+      this.dialogMessage = 'Unauthorized';
+    },
+    
+    startTokenRefreshChecker() {
+      this.tokenRefreshInterval = setInterval(() => {
+        const storage = JSON.parse(localStorage.getItem("user"));
+        const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+        if (storage && storage.user && tokenExp) {
+          if (!this.isTokenValid(tokenExp.tokenExpiry)) {
+            this.refreshTokenAndMakeRequest(storage.user.account_type);
+          }
+        }
+      }, this.refreshInterval);
+    },
     addConfig() {
+      this.startTokenRefreshChecker();
       this.adh_loading = true;
       this.user = JSON.parse(localStorage.getItem("user")).user;
       this.newAdhconfig.company_id = this.user.company.id;
@@ -254,6 +277,7 @@ export default {
       this.updateAdhDialog = false;
     },
     updateConfig() {
+      this.startTokenRefreshChecker();
       this.adh_loading = true;
       axios({
         url: process.env.VUE_APP_BASEURL + '/adh-config/update/' + this.updatedAdhconfig.id, // Adjust the endpoint as necessary

@@ -237,10 +237,9 @@
 </style>
 <script>
 import axios from "axios";
-
 import { msalInstance } from "vue-msal-browser"
-import Swal from "sweetalert2";
-
+import { refreshGoogleToken } from '@/utils/authUtils';
+import { jwtDecode } from 'jwt-decode'; // Ensure jwt-decode is installed
 export default {
   beforeRouteEnter(to, from, next) {
     document.title = `C8 Vortex - ${to.meta.title || ''}`;
@@ -313,106 +312,132 @@ export default {
     };
   },
   mounted() {
-    const storage = JSON.parse(localStorage.getItem("user"));
-    if(storage.user.account_type == 'microsoft'){
-      let store = JSON.parse(localStorage.getItem("user"));
-      let tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
-      if (store && store.token && new Date(tokenExp.tokenExpiry) > new Date()) {
-        // Token is valid, make the request
-        this.makeAuthenticatedRequest(store.token, store.user.id);
-      } else {
-        // Token is expired, refresh it
-        this.refreshTokenAndMakeRequest(store.user.id);
-      }
-    }else{
-      let store = JSON.parse(localStorage.getItem("user"));
-      axios({
-        url: process.env.VUE_APP_BASEURL + "/users",
-        method: "GET",
-        headers: {
-          Authorization: "Bearer " + store.token,
-        },
-        params: {
-        user_id: store.user.id
-      },
-      })
-        .then((res) => {
-          this.subscription = JSON.parse(localStorage.getItem("user")).user.subscription.subscription_type;
-
-          this.users = res.data.map((u) => {
-            u.created_at = new Date(u.created_at).toLocaleDateString();
-            return u;
-          });
-        })
-        .catch((err) => {
-          this.validation_dialog = true;
-          this.dialogMessage = 'Unauthorized';
-        });
-    }
+    this.initializeUsers();
+    this.startTokenRefreshChecker();
   },
+  beforeDestroy() {
+    clearInterval(this.tokenRefreshInterval); // Clear interval when component is destroyed
+  },
+
   methods: {
-    async makeAuthenticatedRequest(token, userId) {
-      try {
-        const res = await axios({
-          url: process.env.VUE_APP_BASEURL + "/users",
-          method: "GET",
-          headers: {
-            Authorization: "Bearer " + token,
-          },
-          params: {
-            user_id: userId
-          },
-        });
-        this.subscription = JSON.parse(localStorage.getItem("user")).user.subscription.subscription_type;
-        this.users = res.data.map((u) => {
-          u.created_at = new Date(u.created_at).toLocaleDateString();
-          return u;
-        });
-      } catch (err) {
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
+    async initializeUsers() {
+      const storage = JSON.parse(localStorage.getItem("user"));
+      if (!storage || !storage.user) return;
+
+      const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+
+      if (storage.user.account_type === 'microsoft') {
+        await this.handleMicrosoftToken(storage, tokenExp);
+      } else if (storage.user.account_type === 'google') {
+        await this.handleGoogleToken(storage, tokenExp);
       }
     },
-    async refreshTokenAndMakeRequest(userId) {
+
+    async handleMicrosoftToken(storage, tokenExp) {
+      if (this.isTokenValid(tokenExp.tokenExpiry)) {
+        this.makeAuthenticatedRequest(storage.token);
+      } else {
+        await this.refreshTokenAndMakeRequest('microsoft');
+      }
+    },
+
+    async handleGoogleToken(storage, tokenExp) {
+      if (this.isTokenValid(tokenExp.tokenExpiry)) {
+        this.makeAuthenticatedRequest(storage.token);
+      } else {
+        await this.refreshTokenAndMakeRequest('google');
+      }
+    },
+
+    isTokenValid(expiry) {
+      return new Date(expiry) > new Date();
+    },
+
+    async refreshTokenAndMakeRequest(accountType, userId) {
       try {
-        await this.acquireTokens(); // Refresh the token
-        let store = JSON.parse(localStorage.getItem("user")); // Re-fetch the user store
-        if (store && store.token) {
-          this.makeAuthenticatedRequest(store.token, userId);
+        if (accountType === 'google') {
+          await this.refreshGoogleToken();
+        } else if (accountType === 'microsoft') {
+          await this.acquireTokens();
+        }
+        const storage = JSON.parse(localStorage.getItem("user"));
+        if (storage && storage.token) {
+          if (accountType === 'google') {
+            this.makeAuthenticatedRequest(storage.token);
+          } else {
+            this.makeAuthenticatedRequest(storage.token, userId);
+          }
         } else {
-          this.validation_dialog = true;
-          this.dialogMessage = 'Unauthorized';
+          this.showUnauthorizedDialog();
         }
       } catch (error) {
         console.error('Error refreshing tokens:', error);
-        this.validation_dialog = true;
-        this.dialogMessage = 'Unauthorized';
+        this.showUnauthorizedDialog();
       }
     },
+
+    async refreshGoogleToken() {
+      const storage = JSON.parse(localStorage.getItem("user"));
+      const { id_token } = await refreshGoogleToken(storage.user.refresh_token);
+      let user = JSON.parse(localStorage.getItem("user"));
+      user.token = id_token;
+      localStorage.setItem("user", JSON.stringify(user));
+
+      const decodedToken = jwtDecode(id_token);
+      const tokenExpiry = new Date(decodedToken.exp * 1000).toISOString();
+      localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+    },
+
     async acquireTokens() {
       try {
         const account = msalInstance.getAllAccounts()[0];
         const response = await msalInstance.acquireTokenSilent({
           scopes: ["user.read", "offline_access"],
-          account: account
+          account
         });
-        const tokenExpiry = response.expiresOn;
+        const tokenExpiry = response.expiresOn.toISOString();
         let user = JSON.parse(localStorage.getItem("user"));
-        if (user) {
-          user.token = response.accessToken;
-          localStorage.setItem("user", JSON.stringify(user));
-        }
-        const tokenExp = {
-          token_expiry: tokenExpiry,
-        }
-        localStorage.setItem("tokenExp", JSON.stringify(tokenExp));
-        // console.log('token refresh successfully');
+        user.token = response.accessToken;
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
       } catch (error) {
         console.error('Error acquiring tokens:', error);
-        await msalInstance.loginRedirect({
-          scopes: ["user.read", "offline_access"]
-        });
+        await msalInstance.loginRedirect({ scopes: ["user.read", "offline_access"] });
       }
+    },
+
+    async makeAuthenticatedRequest(token) {
+      try {
+        const response = await axios({
+          url: process.env.VUE_APP_BASEURL + '/users',
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        this.subscription = JSON.parse(localStorage.getItem("user")).user.subscription.subscription_type;
+        this.users = response.data.map((u) => {
+          u.created_at = new Date(u.created_at).toLocaleDateString();
+          return u;
+        });
+      } catch (err) {
+        this.showUnauthorizedDialog();
+      }
+    },
+
+    showUnauthorizedDialog() {
+      this.validation_dialog = true;
+      this.dialogMessage = 'Unauthorized';
+    },
+
+    startTokenRefreshChecker() {
+      this.tokenRefreshInterval = setInterval(() => {
+        const storage = JSON.parse(localStorage.getItem("user"));
+        const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+        if (storage && storage.user && tokenExp) {
+          if (!this.isTokenValid(tokenExp.tokenExpiry)) {
+            this.refreshTokenAndMakeRequest(storage.user.account_type);
+          }
+        }
+      }, this.refreshInterval);
     },
     addUsersDialog() {
       this.UsersDialog = true;
@@ -431,6 +456,7 @@ export default {
       this.delUserDialog = true;
     },
     viewAssets(user) {
+      this.startTokenRefreshChecker();
       // this.tree = []; // reset tree everytime
       this.user = user;
       this.assets_dialog = true;
@@ -455,6 +481,7 @@ export default {
       });
     },
     addUser() {
+      this.startTokenRefreshChecker();
       if (!this.newUser.firstName) {
         this.validation_dialog = true;
         this.dialogMessage = "First name is required.";
@@ -571,6 +598,7 @@ export default {
     //   }
     // },
     sendUpdatedAssets() {
+      this.startTokenRefreshChecker();
       // console.log(this.elements);
       if (this.elements.length == 0) {
         this.validation_dialog = true;
@@ -603,6 +631,7 @@ export default {
         });
     },
     deleteUser(userID) {
+      this.startTokenRefreshChecker();
       this.loading = true;
       axios({
         url: process.env.VUE_APP_BASEURL + "/deleteUser",
@@ -630,6 +659,7 @@ export default {
       });
     },
     updateUser(userID) {
+      this.startTokenRefreshChecker();
       this.loading = true;
       let payload = {
         id: this.user.id,

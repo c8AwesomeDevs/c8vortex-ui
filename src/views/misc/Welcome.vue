@@ -471,7 +471,7 @@ export default {
         this.microsoftLoading = true;
         let token = response.accessToken;
         let refresh_token = response.refreshToken;
-        console.log(response)
+        // console.log(response)
         axios({
           method: "POST",
           url: process.env.VUE_APP_BASEURL + "/microsoft/auth",

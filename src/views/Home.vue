@@ -724,7 +724,6 @@ import SummaryInterpretations from "@/components/tables/SummaryInterpretations.v
 import InterpretationsDetails from "@/components/popups/InterpretationsDetails.vue";
 // import Gauge from "@/components/charts/Gauge.vue";
 import Papa from "papaparse";
-import Swal from "sweetalert2";
 export default {
   name: "Home",
   mixins: [timeMixin, symbolMixin, gassesMixin],
@@ -798,91 +797,6 @@ export default {
       .catch((err) => {
         const statusCode = err.response.status;
         console.log(statusCode);
-        if (statusCode == 404 || statusCode == 500 || statusCode == 401) {
-          let timerInterval;
-          Swal.fire({
-            title: "Login Session Expired!",
-            html: "Your about to logout in <b></b> seconds.",
-            timer: 5000,
-            icon: "warning",
-            confirmButtonText: "Ok",
-            confirmButtonColor: "#d33",
-            allowOutsideClick: false, // Prevent clicking outside the popup to close
-            allowEscapeKey: false,
-            focusConfirm: false, // Disable autofocus on the confirmation button
-            timerProgressBar: true,
-            didOpen: () => {
-              // Add custom font styles to the title and message
-              const titleElement = Swal.getTitle();
-              titleElement.style.fontFamily = "Calibri";
-              titleElement.style.fontSize = "24px";
-
-              const messageElement = Swal.getHtmlContainer();
-              messageElement.style.fontFamily = "Calibri";
-              messageElement.style.fontSize = "16px";
-
-              // Add custom styling to the icon to position it at the top left corner
-              const iconElement = Swal.getIcon();
-              iconElement.style.position = "relative";
-              iconElement.style.top = "0px";
-              iconElement.style.fontSize = "5px";
-              iconElement.style.right = "220px";
-
-              // Add custom styling to the confirm button to position it at the bottom right
-              const confirmButton = Swal.getConfirmButton();
-              confirmButton.style.position = "relative";
-              confirmButton.style.bottom = "0px";
-              confirmButton.style.left = "180px";
-              confirmButton.style.autofocus = "none";
-
-              const b = messageElement.querySelector("b");
-              timerInterval = setInterval(() => {
-                const remainingTime = Math.ceil(Swal.getTimerLeft() / 1000); // Convert remaining time to seconds and round up
-                b.textContent = remainingTime;
-              }, 100);
-            },
-            willClose: () => {
-              clearInterval(timerInterval);
-            },
-          }).then((result) => {
-            // User clicked the "OK" button, handle the closing logic
-            localStorage.removeItem("user");
-            this.$router.push({ name: "Welcome" });
-          });
-        } else {
-          Swal.fire({
-            title: "Something went wrong!",
-            html: "Please contact your administrator",
-            icon: "warning",
-            confirmButtonText: "Ok",
-            confirmButtonColor: "#d33",
-            focusConfirm: false, // Disable autofocus on the confirmation button
-            didOpen: () => {
-              // Add custom font styles to the title and message
-              const titleElement = Swal.getTitle();
-              titleElement.style.fontFamily = "Calibri";
-              titleElement.style.fontSize = "24px";
-
-              const messageElement = Swal.getHtmlContainer();
-              messageElement.style.fontFamily = "Calibri";
-              messageElement.style.fontSize = "16px";
-
-              // Add custom styling to the confirm button to position it at the bottom right
-              const confirmButton = Swal.getConfirmButton();
-              confirmButton.style.position = "relative";
-              confirmButton.style.bottom = "0px";
-              confirmButton.style.left = "180px";
-              confirmButton.style.autofocus = "none";
-
-              // Add custom styling to the icon to position it at the top left corner
-              const iconElement = Swal.getIcon();
-              iconElement.style.position = "relative";
-              iconElement.style.top = "0px";
-              iconElement.style.fontSize = "5px";
-              iconElement.style.right = "220px";
-            },
-          });
-        }
       });
     var current = new Date();
     var dt1 = localStorage.getItem("startDateTime") ? JSON.parse(localStorage.getItem("startDateTime")) : this.formatDate(new Date().getTime() - this.getMsByTime("1d"));
