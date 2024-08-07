@@ -60,13 +60,13 @@
           <!-- light/dark mode toggle -->
           <v-list-item @click="darkmode()">
             <v-list-item-icon>
-              <v-icon v-if="$vuetify.theme.dark">mdi-weather-night</v-icon>
-              <v-icon v-if="!$vuetify.theme.dark">mdi-weather-sunny</v-icon>
+              <v-icon v-if="$vuetify.theme.dark">mdi-weather-sunny</v-icon>
+              <v-icon v-if="!$vuetify.theme.dark">mdi-weather-night</v-icon>
             </v-list-item-icon>
 
             <v-list-item-content>
-              <v-list-item-title v-if="$vuetify.theme.dark">Dark</v-list-item-title>
-              <v-list-item-title v-if="!$vuetify.theme.dark">Light</v-list-item-title>
+              <v-list-item-title v-if="!$vuetify.theme.dark">Dark</v-list-item-title>
+              <v-list-item-title v-if="$vuetify.theme.dark">Light</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
 
@@ -93,9 +93,9 @@
     </v-main>
 
     <!-- Footer -->
-    <v-footer absolute class="footer mt-10 mb-1" color="transparent">
+    <!-- <v-footer absolute class="footer mt-10 mb-1" color="transparent">
       <span class="lighten-2"> {{ new Date().getFullYear() }} — &copy; Calibr8 Systems Inc.</span>
-    </v-footer>
+    </v-footer> -->
     <SubscriptionPlanDialog v-if="user.account_level == 'company_admin'" :dialog="subscriptionplan_dialog" @close="closeSubscriptionsDialog" :user="user"></SubscriptionPlanDialog>
     <FAQDialog @close="toggleHelpDialog" :user="user" :show="showFAQ" />
   </div>

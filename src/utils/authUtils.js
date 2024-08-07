@@ -19,21 +19,17 @@ export async function refreshGoogleToken(refreshToken) {
     // Decode the ID token to get the expiration time
     const decodedToken = jwtDecode(id_token);
     const tokenExpiry = new Date(decodedToken.exp * 1000); // Convert to milliseconds
-
+    const token_expiry = tokenExpiry.toISOString();
     // Update local storage
     let user = JSON.parse(localStorage.getItem("user"));
     if (user) {
+      user.token_expiry = token_expiry
       user.token = id_token;
       localStorage.setItem("user", JSON.stringify(user));
     }
 
-    const tokenExp = {
-      token_expiry: tokenExpiry.toISOString(), // Store as ISO string
-    };
-    localStorage.setItem("token_expiry", JSON.stringify(tokenExp));
-
     console.log('Google token refreshed successfully');
-    return { access_token, id_token, tokenExpiry };
+    return { access_token, id_token, token_expiry };
 
   } catch (error) {
     console.error('Error refreshing Google token:', error);

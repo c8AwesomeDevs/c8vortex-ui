@@ -265,7 +265,9 @@ export default {
       demo_dialog: false,
       validation_dialog: false,
       expiration_date: "",
-      user:{}
+      user:{},
+      tokenRefreshInterval: null,
+      refreshInterval: 60000, // Set the interval time for token refresh
     };
   },
   mounted() {
@@ -303,45 +305,45 @@ export default {
     subscribe(type) {
       this.$emit("subscribe", type, this.subscriptions[type].price_id);
     },
-    upgrade(type) {
-      this.startTokenRefreshChecker();
+    async upgrade(type) {
+      await this.startTokenRefreshChecker();
       this.loading = true;
-      axios({
-        url: process.env.VUE_APP_BASEURL + "/checkout",
-        method: "GET",
-        headers: {
-          Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
-        },
-      }).then((res) => {
-        window.open(res.data, "_self");
-        this.loading = false;
-        // console.log(res.data);
-      });
-    },
-    manageSub() {
-      this.startTokenRefreshChecker();
-      // this.loading = true;
-      this.loading = true;
-      axios({
-        url: process.env.VUE_APP_BASEURL + "/subscriptions/manage",
-        method: "GET",
-        headers: {
-          Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
-        },
-      })
-        .then((res) => {
-          // if (res.data.id != undefined) {
-          //   this.current_subscription_details = res.data;
-          //   this.current_subscription_dialog = true;
-          // }
-          if (res.data) {
-            window.open(res.data, "_self");
-            this.loading = false;
-          }
-        })
-        .catch((err) => {
-          alert(JSON.stringify(err));
+      try {
+        const res = await axios({
+          url: process.env.VUE_APP_BASEURL + "/checkout",
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.getToken()}`,
+          },
         });
+        window.open(res.data, "_self");
+      } catch (error) {
+        console.error('Upgrade error:', error);
+        this.showErrorDialog(error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async manageSub() {
+      await this.startTokenRefreshChecker();
+      this.loading = true;
+      try {
+        const res = await axios({
+          url: process.env.VUE_APP_BASEURL + "/subscriptions/manage",
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.getToken()}`,
+          },
+        });
+        if (res.data) {
+          window.open(res.data, "_self");
+        }
+      } catch (error) {
+        console.error('Manage subscription error:', error);
+        this.showErrorDialog(error);
+      } finally {
+        this.loading = false;
+      }
     },
     async checkSub(type) {
       const storage = JSON.parse(localStorage.getItem("user"));
@@ -350,138 +352,107 @@ export default {
         return;
       }
 
-      const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
-
-      if (storage.user.account_type === 'microsoft') {
-        if (storage.token && this.isTokenValid(tokenExp.tokenExpiry)) {
-          // Token is valid, make the request
-          this.makeCheckSubRequest(type, storage.token);
-        } else {
-          // Token is expired, refresh it
-          await this.refreshTokenAndCheckSub(type);
-        }
-      } else if (storage.user.account_type === 'google') {
-        if (storage.token && this.isTokenValid(tokenExp.tokenExpiry)) {
-          // Token is valid, make the request
-          this.makeCheckSubRequest(type, storage.token);
-        } else {
-          // Token is expired, refresh it
-          await this.refreshTokenAndCheckSub(type);
-        }
+      if (this.isTokenValid()) {
+        // Token is valid, make the request
+        await this.makeCheckSubRequest(type, this.getToken());
+      } else {
+        // Token is expired, refresh it
+        await this.refreshTokenAndCheckSub(type);
       }
     },
-
-    async makeCheckSubRequest(type, token, userId) {
+    async makeCheckSubRequest(type, token) {
       try {
         const response = await axios({
           url: process.env.VUE_APP_BASEURL + "/subscriptions/check",
           method: "GET",
-          params: { type: type, user_id: userId },
+          params: { type },
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.data.id !== undefined) {
           this.current_subscription_details = response.data;
         }
-      } catch (err) {
+      } catch (error) {
+        console.error('Check subscription error:', error);
         this.showUnauthorizedDialog();
       }
     },
-
     async refreshTokenAndCheckSub(type) {
-      const storage = JSON.parse(localStorage.getItem("user"));
-
       try {
-        if (storage.user.account_type === 'google') {
-          await this.refreshGoogleToken();
-        } else if (storage.user.account_type === 'microsoft') {
-          await this.acquireTokens();
-        }
-
-        let updatedStorage = JSON.parse(localStorage.getItem("user"));
+        await this.refreshToken();
+        const updatedStorage = JSON.parse(localStorage.getItem("user"));
         if (updatedStorage && updatedStorage.token) {
-          this.makeCheckSubRequest(type, updatedStorage.token);
+          await this.makeCheckSubRequest(type, updatedStorage.token);
         } else {
           this.showUnauthorizedDialog();
         }
       } catch (error) {
-        console.error('Error refreshing tokens:', error);
+        console.error('Error refreshing token:', error);
         this.showUnauthorizedDialog();
       }
     },
-    async refreshTokenAndMakeRequest(accountType) {
-      try {
-        if (accountType === 'google') {
-          await this.refreshGoogleToken();
-        } else if (accountType === 'microsoft') {
-          await this.acquireTokens();
-        }
-        const storage = JSON.parse(localStorage.getItem("user"));
-        if (storage && storage.token) {
-          if (this.user.subscription.subscription_type == "demo") {
-            this.checkSub("demo");
-          } else {
-            this.checkSub("advanced");
-          }
-        } else {
-          this.showUnauthorizedDialog();
-        }
-      } catch (error) {
-        console.error('Error refreshing tokens:', error);
-        this.showUnauthorizedDialog();
-      }
-    },
-
-    async refreshGoogleToken() {
+    async refreshToken() {
       const storage = JSON.parse(localStorage.getItem("user"));
-      const { id_token } = await refreshGoogleToken(storage.user.refresh_token);
-      let user = JSON.parse(localStorage.getItem("user"));
-      user.token = id_token;
-      localStorage.setItem("user", JSON.stringify(user));
-
-      const decodedToken = jwtDecode(id_token);
-      const tokenExpiry = new Date(decodedToken.exp * 1000).toISOString();
-      localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+      if (storage.user.account_type === 'google') {
+        await this.refreshGoogleToken();
+      } else if (storage.user.account_type === 'microsoft') {
+        await this.refreshMicrosoftToken();
+      }
     },
-
-    async acquireTokens() {
+    async refreshGoogleToken() {
+      try {
+        const storage = JSON.parse(localStorage.getItem("user"));
+        const { id_token } = await refreshGoogleToken(storage.user.refresh_token);
+        this.updateToken(id_token);
+      } catch (error) {
+        console.error('Error refreshing Google token:', error);
+        this.showUnauthorizedDialog();
+      }
+    },
+    async refreshMicrosoftToken() {
       try {
         const account = msalInstance.getAllAccounts()[0];
         const response = await msalInstance.acquireTokenSilent({
           scopes: ["user.read", "offline_access"],
-          account: account
+          account: account,
         });
-        const tokenExpiry = response.expiresOn.toISOString();
-        let user = JSON.parse(localStorage.getItem("user"));
-        if (user) {
-          user.token = response.accessToken;
-          localStorage.setItem("user", JSON.stringify(user));
-        }
-        localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+        this.updateToken(response.accessToken, response.expiresOn);
       } catch (error) {
-        console.error('Error acquiring tokens:', error);
+        console.error('Error acquiring Microsoft token:', error);
         await msalInstance.loginRedirect({ scopes: ["user.read", "offline_access"] });
       }
     },
-
-    isTokenValid(expiry) {
-      return new Date(expiry) > new Date();
+    isTokenValid() {
+      const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
+      return new Date(tokenExp.tokenExpiry) > new Date();
     },
-
+    getToken() {
+      const storage = JSON.parse(localStorage.getItem("user"));
+      return storage.token;
+    },
+    updateToken(token, expiryDate = null) {
+      const decodedToken = jwtDecode(token);
+      const tokenExpiry = expiryDate || new Date(decodedToken.exp * 1000).toISOString();
+      let user = JSON.parse(localStorage.getItem("user"));
+      user.token = token;
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+    },
     showUnauthorizedDialog() {
       this.validation_dialog = true;
       this.dialogMessage = 'Unauthorized';
     },
-    startTokenRefreshChecker() {
-      this.tokenRefreshInterval = setInterval(() => {
-        const storage = JSON.parse(localStorage.getItem("user"));
-        const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
-        if (storage && storage.user && tokenExp) {
-          if (!this.isTokenValid(tokenExp.tokenExpiry)) {
-            this.refreshTokenAndMakeRequest(storage.user.account_type);
-          }
-        }
-      }, this.refreshInterval);
+    showErrorDialog(error) {
+      alert(JSON.stringify(error));
     },
-  }
+    startTokenRefreshChecker() {
+      if (!this.tokenRefreshInterval) {
+        this.tokenRefreshInterval = setInterval(async () => {
+          if (!this.isTokenValid()) {
+            await this.refreshToken();
+          }
+        }, this.refreshInterval);
+      }
+    },
+  },
 };
 </script>

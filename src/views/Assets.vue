@@ -4,7 +4,7 @@
       <v-col cols="12" sm="6" md="2" class="pr-0 pb-0">
         <v-card class="column-header" dense block dark color="red darken-4">Assets Hierarchy</v-card>
 
-        <v-btn v-if="account_level == 'company_admin'" text small block color="red" class="darken-2" @click="addRootElement()"> <v-icon>mdi-plus</v-icon> New Site Element </v-btn>
+        <v-btn v-if="account_level == 'company_admin'" text small block color="#60ab91" class="darken-2" @click="addRootElement()"> <v-icon>mdi-plus</v-icon> New Site Element </v-btn>
 
         <v-divider></v-divider>
         <v-treeview
@@ -13,7 +13,7 @@
           open-all
           :active="tree"
           v-model="tree"
-          color="red"
+          color=""
           :items="items"
           activatable
           item-key="id"
@@ -27,10 +27,10 @@
       </v-col>
       <v-divider vertical></v-divider>
       <v-col cols="12" sm="6" md="10" class="pl-1 pb-0">
-        <v-progress-linear v-if="loading" indeterminate color="red lighten-2"></v-progress-linear>
+        <v-progress-linear v-if="loading" indeterminate color="#60ab91"></v-progress-linear>
         <!-- tabs -->
-        <v-tabs color="red" v-model="tab" :value="tab" left>
-          <v-tabs-slider color="red"></v-tabs-slider>
+        <v-tabs  color="#60ab91" v-model="tab" :value="tab" left>
+          <v-tabs-slider color=""></v-tabs-slider>
 
           <v-tab key="general" v-if="items.length > 0 && elements !== 2"> {{ elements == "1" ? "Substation Details" : "Site Details" }}</v-tab>
           <v-tab key="Status" v-if="elements == 1"> Transformer Status </v-tab>
@@ -65,7 +65,7 @@
                       </div>
                       <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn color="red" text small @click="toggleUpdateModal()">Update<v-icon right dark>mdi-content-save</v-icon></v-btn>
+                        <v-btn color="#60ab91" text small @click="toggleUpdateModal()">Update<v-icon right dark>mdi-content-save</v-icon></v-btn>
                       </v-card-actions>
                     </v-container>
                   </v-form>
@@ -77,10 +77,10 @@
               <!-- <v-btn text small color="red" @click="removeChild()"> <v-icon>mdi-minus</v-icon> Delete Element </v-btn> -->
             </div>
             <div v-if="elements == 0">
-              <v-btn text small color="red" v-if="account_level == 'company_admin'" @click="addSubstation()"> <v-icon>mdi-plus</v-icon> New Substation Element </v-btn>
+              <v-btn text small color="#60ab91" v-if="account_level == 'company_admin'" @click="addSubstation()"> <v-icon>mdi-plus</v-icon> New Substation Element </v-btn>
             </div>
             <div v-if="elements == 1">
-              <v-btn text small color="red" v-if="account_level == 'company_admin'" @click="addTransformer()"> <v-icon>mdi-plus</v-icon> New Transformer Element </v-btn>
+              <v-btn text small color="#60ab91" v-if="account_level == 'company_admin'" @click="addTransformer()"> <v-icon>mdi-plus</v-icon> New Transformer Element </v-btn>
             </div>
           </v-tab-item>
           <!-- Summary of all transformers -->
@@ -139,7 +139,7 @@
                       </div>
                       <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn color="red" text small @click="toggleUpdateModal()">Update element<v-icon right dark>mdi-content-save</v-icon></v-btn>
+                        <v-btn color="#60ab91" text small @click="toggleUpdateModal()">Update<v-icon right dark>mdi-content-save</v-icon></v-btn>
                       </v-card-actions>
                     </v-container>
                   </v-form>
@@ -164,7 +164,7 @@
               </v-btn>
             </v-container> -->
             <v-container style="position: relative; bottom: 5px">
-              <v-btn v-if="transformer_details.length == 0" block depressed color="red" dark @click="editTransformerDetails('add')">
+              <v-btn v-if="transformer_details.length == 0" block depressed color="#60ab91" dark @click="editTransformerDetails('add')">
                 <v-icon>mdi-triangle-outline</v-icon>
                 Create Transformer Details
               </v-btn>
@@ -247,7 +247,7 @@
                     </v-row>
                     <v-card-actions>
                       <v-spacer></v-spacer>
-                      <v-btn color="red" text small @click="editTransformerDetails('upd')">Update transformer<v-icon right dark>mdi-content-save</v-icon></v-btn>
+                      <v-btn color="#60ab91" text small @click="editTransformerDetails('upd')">Update<v-icon right dark>mdi-content-save</v-icon></v-btn>
                     </v-card-actions>
                   </v-container>
                 </v-form>
@@ -805,7 +805,7 @@
           </v-row>
           <v-row>
             <v-col cols="12" md="12">
-              <v-btn block class="red darken-4 white--text" :disabled="save_loading" @click="writeData()">{{ save_loading ? "Saving..." : "Save Data" }}</v-btn>
+              <v-btn block color="#60ab91" class="white--text" :disabled="save_loading" @click="writeData()">{{ save_loading ? "Saving..." : "Save Data" }}</v-btn>
               <!-- <v-btn block class="red darken-4 white--text" :disabled="loading" @click="pay()"> Pay for Usage billing </v-btn> -->
             </v-col>
           </v-row>
@@ -820,7 +820,7 @@
         <v-toolbar v-if="elements == 0" class="red darken-3" dense dark> Substation Details </v-toolbar>
         <v-toolbar v-if="elements == 1" class="red darken-3" dense dark> Transformer Details </v-toolbar>
         <v-divider></v-divider>
-        <v-progress-linear v-if="save_loading" indeterminate color="red lighten-2"></v-progress-linear>
+        <v-progress-linear v-if="save_loading" indeterminate color="#60ab91"></v-progress-linear>
         <v-card-text>
           <div class="my-2">
             <v-text-field color="red" label="Name" hide-details v-model="new_element.name"></v-text-field>
@@ -835,7 +835,7 @@
         <v-card-actions>
           <v-btn dark small color="red" text @click="element_dialog = false"> <v-icon>mdi-arrow-left</v-icon> Cancel </v-btn>
           <v-spacer></v-spacer>
-          <v-btn small color="indigo" dark text @click="saveElement()"> <v-icon>mdi-content-save</v-icon> Save </v-btn>
+          <v-btn small color="#60ab91" dark text @click="saveElement()"> <v-icon>mdi-content-save</v-icon> Save </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -872,7 +872,7 @@
       <v-card>
         <v-toolbar class="red darken-3" dense dark> Site Details </v-toolbar>
         <v-divider></v-divider>
-        <v-progress-linear v-if="save_loading" indeterminate color="red lighten-2"></v-progress-linear>
+        <v-progress-linear v-if="save_loading" indeterminate color="#60ab91"></v-progress-linear>
         <v-card-text>
           <div class="my-2">
             <v-text-field color="red" label="Name" hide-details v-model="new_element.name"></v-text-field>
@@ -884,7 +884,7 @@
         <v-card-actions>
           <v-btn dark small color="red" text @click="rootElement_dialog = false"> <v-icon>mdi-arrow-left</v-icon> Cancel </v-btn>
           <v-spacer></v-spacer>
-          <v-btn small color="indigo" dark text @click="saverootElement()"> <v-icon>mdi-content-save</v-icon> Save </v-btn>
+          <v-btn small color="#60ab91" dark text @click="saverootElement()"> <v-icon>mdi-content-save</v-icon> Save </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -987,10 +987,10 @@
           </v-row>
           <v-row>
             <v-col v-if="transformer_dialog_mode === 'add'" cols="12" md="12">
-              <v-btn block class="red darken-4 white--text" :disabled="save_loading" @click="saveDetails()"> {{ save_loading ? "Saving..." : "Save Details" }} </v-btn>
+              <v-btn block color="#60ab91" class="white--text" :disabled="save_loading" @click="saveDetails()"> {{ save_loading ? "Saving..." : "Save Details" }} </v-btn>
             </v-col>
             <v-col v-if="transformer_dialog_mode === 'upd'" cols="12" md="12">
-              <v-btn block class="red darken-4 white--text" :disabled="save_loading" @click="updateTransformerDetails()">
+              <v-btn block color="#60ab91" class="white--text" :disabled="save_loading" @click="updateTransformerDetails()">
                 {{ save_loading ? "Updating..." : "Update Details" }}
               </v-btn>
             </v-col>
@@ -1014,6 +1014,23 @@
           </div>
           <v-card-actions class="justify-end">
             <v-btn dark small color="red" text @click="validation_dialog = false">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </template>
+    </v-dialog>
+    <v-dialog v-model="success_dialog" max-width="450" min-width="400">
+      <template>
+        <v-card>
+          <div>
+            <span>
+              <v-icon color="green" class="icon ml-3 mt-3">mdi-check-circle-outline</v-icon>
+              <span class="demo-check">
+                {{ dialogMessage }}
+              </span>
+            </span>
+          </div>
+          <v-card-actions class="justify-end">
+            <v-btn dark small color="red" text @click="success_dialog = false">OK</v-btn>
           </v-card-actions>
         </v-card>
       </template>
@@ -1177,6 +1194,7 @@ export default {
       loading: false,
       save_loading: false,
       validation_dialog: false,
+      success_dialog: false,
       dialogMessage: "",
       dialogTitle: "",
       initiallyOpen: [],
@@ -1340,7 +1358,7 @@ export default {
         if (accountType === 'google') {
           await this.refreshGoogleToken();
         } else if (accountType === 'microsoft') {
-          await this.acquireTokens();
+          await this.refreshMicrosoftToken();
         }
         const storage = JSON.parse(localStorage.getItem("user"));
         if (storage && storage.token) {
@@ -1366,7 +1384,7 @@ export default {
       localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
     },
 
-    async acquireTokens() {
+    async refreshMicrosoftToken() {
       try {
         const account = msalInstance.getAllAccounts()[0];
         const response = await msalInstance.acquireTokenSilent({
@@ -1389,6 +1407,10 @@ export default {
     showUnauthorizedDialog() {
       this.validation_dialog = true;
       this.dialogMessage = 'Unauthorized';
+    },
+    showSuccessDialog() {
+      this.success_dialog = true;
+      this.dialogMessage = 'ADH config generated successfully!';
     },
 
     startTokenRefreshChecker() {
@@ -1553,6 +1575,11 @@ export default {
         .catch((err) => {});
     },
     toggleUpdateModal() {
+      if (this.element.id == undefined) {
+        this.validation_dialog = true;
+        this.dialogMessage = "Please select element to update.";
+        return;
+      }
       this.updateElementModal = true;
     },
     updateElement() {
@@ -1570,6 +1597,8 @@ export default {
         .then((res) => {
           this.update_loading = false;
           this.updateElementModal = false;
+          this.success_dialog = true;
+          this.dialogMessage = "Element details successfully updated!"
         })
         .catch((res) => {
           this.update_loading = false;
@@ -1607,9 +1636,17 @@ export default {
         .then((res) => {
           this.save_loading = false;
           this.items = res.data;
-          // console.log(this.items);
+          console.log(this.items);
           this.element_dialog = false;
           this.rootElement_dialog = false;
+          if(this.elements == 0){
+            this.success_dialog = true;
+            this.dialogMessage = `${this.items[0].children[0].name} created successfully!`;
+          }else if(this.elements == 1){
+            this.success_dialog = true;
+            this.dialogMessage = `${this.items[0].children[0].children[0].name} created successfully!`;
+          }
+         
         })
         .catch((err) => {
           // alert(err.response.data.message);
@@ -1641,9 +1678,10 @@ export default {
         .then((res) => {
           this.save_loading = false;
           this.items = res.data;
-          // console.log(this.items);
           this.element_dialog = false;
           this.rootElement_dialog = false;
+          this.success_dialog = true;
+          this.dialogMessage = `${this.items[0].name} created successfully!`;
         })
         .catch((err) => {
           // console.log(err.response);
@@ -1756,6 +1794,8 @@ export default {
             this.transformer_details = [response.data.new_transformers];
             this.transformer = {}; // clear input fields?
             this.save_loading = false; // stop loading
+            this.success_dialog = true;
+            this.dialogMessage = "Transformer details successfully created!"
           })
           .catch((err) => {
             alert(err.response);
@@ -1816,6 +1856,8 @@ export default {
             this.transformer = {}; // clear input fields?
             this.save_loading = false; // stop loading
             this.transformer_dialog_mode = "add"; // return to add mode
+            this.success_dialog = true;
+            this.dialogMessage = "Transformer updated successfully!"
           })
           .catch((err) => {
             alert(err.response);

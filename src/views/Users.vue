@@ -358,7 +358,7 @@ export default {
         if (accountType === 'google') {
           await this.refreshGoogleToken();
         } else if (accountType === 'microsoft') {
-          await this.acquireTokens();
+          await this.refreshMicrosoftToken();
         }
         const storage = JSON.parse(localStorage.getItem("user"));
         if (storage && storage.token) {
@@ -388,7 +388,7 @@ export default {
       localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
     },
 
-    async acquireTokens() {
+    async refreshMicrosoftToken() {
       try {
         const account = msalInstance.getAllAccounts()[0];
         const response = await msalInstance.acquireTokenSilent({

@@ -168,7 +168,7 @@ export default {
         localStorage.setItem("token_expiry", JSON.stringify(token_expiry));
 
         let test = JSON.parse(localStorage.getItem("token_expiry"));
-        console.log(test);
+        // console.log(test);
 
         // Emit the authenticate event
         this.$emit('authenticate', 'google', {

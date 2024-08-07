@@ -5,25 +5,19 @@
         <v-toolbar dark dense color="red">
           ADH Configurations
           <v-spacer></v-spacer>
-          <!-- <v-btn small @click="openUpdateAdhDialog" outlined>
-            Update
-            <v-icon class="pl-2">mdi-update</v-icon>
-          </v-btn> -->
         </v-toolbar>
         <v-card-text>
           <v-form>
             <v-row dense>
-              <v-col cols="12" sm="6" v-if="adh_config[0]">
-                <v-text-field v-model="adh_config[0].stream_id" color="red" readonly label="Stream" outlined></v-text-field>
-              </v-col>
-              <v-col cols="12" sm="6" v-if="adh_config[0]">
-                <v-text-field v-model="adh_config[0].name" color="red" readonly label="Name" outlined></v-text-field>
-              </v-col>
-              <v-col cols="12" sm="6" v-if="adh_config[0]">
-                <v-text-field v-model="adh_config[0].descriptions" color="red" readonly label="Descriptions" outlined></v-text-field>
-              </v-col>
-              <v-col cols="12" sm="6" v-if="adh_config[0]">
-                <v-text-field v-model="adh_config[0].type" color="red" readonly label="Type" outlined></v-text-field>
+              <v-col v-for="(field, index) in adhFields" :key="index" cols="12" sm="6">
+                <!-- Access the first object of the array -->
+                <v-text-field
+                  v-model="adh_config[0][field.key]"
+                  color="red"
+                  readonly
+                  :label="field.label"
+                  outlined
+                ></v-text-field>
               </v-col>
             </v-row>
           </v-form>
@@ -59,7 +53,7 @@
         <v-divider></v-divider>
         <v-card-actions class="pa-4">
           <v-spacer></v-spacer>
-          <v-btn :disabled="adh_loading" depressed color="blue" text apend-icon="mdi-content-save-plus-outline" elevation="3" small @click="updateConfig">
+          <v-btn :disabled="adh_loading" depressed color="blue" text append-icon="mdi-content-save-plus-outline" elevation="3" small @click="updateConfig">
             {{ adh_loading ? "Updating..." : "Update" }}
             <v-icon v-if="!adh_loading" right dark>mdi-content-save-plus-outline</v-icon>
           </v-btn>
@@ -71,7 +65,7 @@
         <v-card>
           <div>
             <span>
-              <v-icon color="orange" class="icon ml-3 mt-3"> mdi-alert-circle-outline </v-icon>
+              <v-icon color="orange" class="icon ml-3 mt-3">mdi-alert-circle-outline</v-icon>
               <span class="demo-check">
                 {{ dialogMessage }}
               </span>
@@ -83,9 +77,27 @@
         </v-card>
       </template>
     </v-dialog>
+    <v-dialog v-model="success_dialog" max-width="450" min-width="400">
+      <template>
+        <v-card>
+          <div>
+            <span>
+              <v-icon color="green" class="icon ml-3 mt-3">mdi-check-circle-outline</v-icon>
+              <span class="demo-check">
+                {{ dialogMessage }}
+              </span>
+            </span>
+          </div>
+          <v-card-actions class="justify-end">
+            <v-btn dark small color="red" text @click="success_dialog = false">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </template>
+    </v-dialog>
   </div>
 </template>
-<style scope>
+
+<style scoped>
 .demo-check {
   font-size: 13px;
   white-space: pre;
@@ -96,11 +108,13 @@
   margin-right: 1em;
 }
 </style>
+
 <script>
 import axios from "axios";
 import { refreshGoogleToken } from '@/utils/authUtils';
-import { msalInstance } from "vue-msal-browser"
-import { jwtDecode } from 'jwt-decode'; // Ensure jwt-decode is installed
+import { msalInstance } from "vue-msal-browser";
+import { jwtDecode } from 'jwt-decode';
+
 export default {
   name: 'ADHConfig',
 
@@ -119,11 +133,19 @@ export default {
       adh_loading: false,
       updateAdhDialog: false,
       user: {},
-      adh_config: [], // Initialize as an empty array
+      adh_config: [],
       newAdhconfig: {},
       updatedAdhconfig: {},
       validation_dialog: false,
-      dialogMessage:'',
+      success_dialog: false,
+      dialogMessage: '',
+      tokenRefreshInterval: null,
+      adhFields: [
+        { key: 'stream_id', label: 'Stream' },
+        { key: 'name', label: 'Name' },
+        { key: 'descriptions', label: 'Descriptions' },
+        { key: 'type', label: 'Type' }
+      ]
     };
   },
 
@@ -132,12 +154,12 @@ export default {
     this.startTokenRefreshChecker();
   },
   beforeDestroy() {
-    clearInterval(this.tokenRefreshInterval); // Clear interval when component is destroyed
+    clearInterval(this.tokenRefreshInterval);
   },
   methods: {
     async initializeADHconfig() {
-      const storage = JSON.parse(localStorage.getItem("user"));
-      if (!storage || !storage.user) return;
+      const storage = this.getStorage();
+      if (!storage) return;
 
       const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
 
@@ -173,9 +195,9 @@ export default {
         if (accountType === 'google') {
           await this.refreshGoogleToken();
         } else if (accountType === 'microsoft') {
-          await this.acquireTokens();
+          await this.refreshMicrosoftToken();
         }
-        const storage = JSON.parse(localStorage.getItem("user"));
+        const storage = this.getStorage();
         if (storage && storage.token) {
           this.makeAuthenticatedRequest(storage.token);
         } else {
@@ -188,30 +210,20 @@ export default {
     },
 
     async refreshGoogleToken() {
-      const storage = JSON.parse(localStorage.getItem("user"));
+      const storage = this.getStorage();
       const { id_token } = await refreshGoogleToken(storage.user.refresh_token);
-      let user = JSON.parse(localStorage.getItem("user"));
-      user.token = id_token;
-      localStorage.setItem("user", JSON.stringify(user));
-
-      const decodedToken = jwtDecode(id_token);
-      const tokenExpiry = new Date(decodedToken.exp * 1000).toISOString();
-      localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+      this.updateTokenStorage(id_token);
     },
 
-    async acquireTokens() {
+    async refreshMicrosoftToken() {
       try {
         const account = msalInstance.getAllAccounts()[0];
         const response = await msalInstance.acquireTokenSilent({
           scopes: ["user.read", "offline_access"],
           account
         });
-        const tokenExpiry = response.expiresOn.toISOString();
-        let user = JSON.parse(localStorage.getItem("user"));
-        user.token = response.accessToken;
-        localStorage.setItem("user", JSON.stringify(user));
-        localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
-        console.log("token refresh successfullu!")
+        this.updateTokenStorage(response.accessToken, response.expiresOn);
+        console.log("Token refreshed successfully!");
       } catch (error) {
         console.error('Error acquiring tokens:', error);
         await msalInstance.loginRedirect({ scopes: ["user.read", "offline_access"] });
@@ -235,68 +247,92 @@ export default {
       this.validation_dialog = true;
       this.dialogMessage = 'Unauthorized';
     },
+    showSuccessDialog() {
+      this.success_dialog = true;
+      this.dialogMessage = 'ADH config generated successfully!';
+    },
     
     startTokenRefreshChecker() {
       this.tokenRefreshInterval = setInterval(() => {
-        const storage = JSON.parse(localStorage.getItem("user"));
+        const storage = this.getStorage();
         const tokenExp = JSON.parse(localStorage.getItem("token_expiry"));
-        if (storage && storage.user && tokenExp) {
+        if (storage && tokenExp) {
           if (!this.isTokenValid(tokenExp.tokenExpiry)) {
             this.refreshTokenAndMakeRequest(storage.user.account_type);
           }
         }
       }, this.refreshInterval);
     },
-    addConfig() {
+    
+    getStorage() {
+      return JSON.parse(localStorage.getItem("user"));
+    },
+    
+    updateTokenStorage(token, expiry) {
+      let user = this.getStorage();
+      user.token = token;
+      localStorage.setItem("user", JSON.stringify(user));
+
+      const decodedToken = jwtDecode(token);
+      const tokenExpiry = expiry ? expiry.toISOString() : new Date(decodedToken.exp * 1000).toISOString();
+      localStorage.setItem("token_expiry", JSON.stringify({ tokenExpiry }));
+    },
+    
+    async addConfig() {
       this.startTokenRefreshChecker();
       this.adh_loading = true;
-      this.user = JSON.parse(localStorage.getItem("user")).user;
+      this.user = this.getStorage().user;
       this.newAdhconfig.company_id = this.user.company.id;
       this.newAdhconfig.stream_id = this.user.company.company_name + "_DGA";
-      axios({
-        url: process.env.VUE_APP_BASEURL + '/adh-config/save',
-        method: "POST",
-        data: this.newAdhconfig,
-        headers: {
-          Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
-        },
-      }).then((response) => {
+      try {
+        const response = await axios({
+          url: process.env.VUE_APP_BASEURL + '/adh-config/save',
+          method: "POST",
+          data: this.newAdhconfig,
+          headers: {
+            Authorization: "Bearer " + this.getStorage().token,
+          },
+        });
         this.adh_loading = false;
-        this.adh_config = [response.data.new_adh];  // Update the config
-        // console.log(this.adh_config);
-      }).catch((err) => {
+        this.adh_config = [response.data.new_adh];
+        this.showSuccessDialog();
+      } catch (err) {
         alert(err.response);
         this.adh_loading = false;
-      });
+      }
     },
+    
     openUpdateAdhDialog() {
-      this.updatedAdhconfig = { ...this.adh_config[0] }; // Pre-fill the dialog with the current config
+      this.updatedAdhconfig = { ...this.adh_config[0] };
       this.updateAdhDialog = true;
     },
+    
     closeUpdateAdhDialog() {
       this.updateAdhDialog = false;
     },
-    updateConfig() {
+    
+    async updateConfig() {
       this.startTokenRefreshChecker();
       this.adh_loading = true;
-      axios({
-        url: process.env.VUE_APP_BASEURL + '/adh-config/update/' + this.updatedAdhconfig.id, // Adjust the endpoint as necessary
-        method: "PUT",
-        data: this.updatedAdhconfig,
-        headers: {
-          Authorization: "Bearer " + JSON.parse(localStorage.getItem("user")).token,
-        },
-      }).then((response) => {
+      try {
+        const response = await axios({
+          url: process.env.VUE_APP_BASEURL + '/adh-config/update/' + this.updatedAdhconfig.id,
+          method: "PUT",
+          data: this.updatedAdhconfig,
+          headers: {
+            Authorization: "Bearer " + this.getStorage().token,
+          },
+        });
         this.adh_loading = false;
         this.updateAdhDialog = false;
-        this.adh_config = [response.data]; // Update the local config
+        this.adh_config = [response.data];
         console.log(this.adh_config);
-      }).catch((err) => {
+      } catch (err) {
         alert(err.response.message);
-        console.log(err.response)
+        console.log(err.response);
         this.adh_loading = false;
         this.updateAdhDialog = false;
-      });
+      }
     }
   }
 };

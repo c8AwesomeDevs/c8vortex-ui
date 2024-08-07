@@ -127,6 +127,9 @@
       </v-row>
     </div>
 
+    <v-footer absolute class="footer mt-10 mb-1" color="transparent">
+      <span class="lighten-2"> &copy; {{ new Date().getFullYear() }} Calibr8 Systems Inc. All Rights Reserved</span>
+    </v-footer>
     <v-dialog v-model="validation_dialog" max-width="350" min-width="300">
       <template>
         <v-card>
@@ -170,7 +173,7 @@
         <v-card>
           <div>
             <span>
-              <v-icon color="green" class="icon ml-3 mt-3"> mdi-check-circle </v-icon>
+              <v-icon color="green" class="icon ml-3 mt-3"> mdi-check-circle-outline </v-icon>
               <div class="message">
                 Hello <span class="bold">{{ username }}</span
                 >,<br />
@@ -193,6 +196,13 @@
 </template>
 
 <style scoped>
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #999;
+  font-size: 14px;
+}
 .bold {
   font-weight: bold;
 }
@@ -406,6 +416,7 @@ export default {
         // console.log(response);
         let token;
         let refresh_token;
+        let token_expiry;
 
         // if (response.Oc != undefined) {
         //     token = response.Oc.id_token || response.Jc.id_token;
@@ -421,11 +432,12 @@ export default {
         
         token = response.id_token;
         refresh_token = response.refreshToken;
+        token_expiry = response.token_expiry;
 
         axios({
             method: "POST",
             url: process.env.VUE_APP_BASEURL + "/google/auth",
-            data: { token: token, refresh_token:refresh_token },
+            data: { token: token, refresh_token: refresh_token, token_expiry: token_expiry },
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
         })
             .then((res) => {
@@ -470,12 +482,13 @@ export default {
       
         this.microsoftLoading = true;
         let token = response.accessToken;
-        let refresh_token = response.refreshToken;
+        let token_expiry = response.expiresOn
+
         // console.log(response)
         axios({
           method: "POST",
           url: process.env.VUE_APP_BASEURL + "/microsoft/auth",
-          data: { token: token, refresh_token:refresh_token },
+          data: { token: token, token_expiry: token_expiry },
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
         }).then((res) => {
             window.localStorage.setItem("user", JSON.stringify(res.data));
