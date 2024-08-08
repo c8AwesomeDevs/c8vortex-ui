@@ -32,7 +32,7 @@
           <div>
             <div>For more concerns, contact us:</div>
 
-            <v-card class="d-flex mt-1 align-center" flat @click="openNewTab('https://calibr8.systems/c8-contact-page')">
+            <v-card class="d-flex mt-1 align-center" flat @click="openNewTab('https://calibr8.systems/contact-us/')">
               <v-icon class="pr-4">mdi-link-variant</v-icon>
               <div>https://calibr8.systems/c8-contact-page</div>
             </v-card>

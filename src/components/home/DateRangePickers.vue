@@ -30,7 +30,7 @@
       </v-col>
       <v-col class="mt-1" cols="12" sm="4">
         <v-btn class="mr-1" :disabled="loading"  @click="emitFilter">Filter</v-btn>
-        <v-btn :disabled="loading" :color="realtime ? 'red' : ''" :dark="realtime" @click="setRealTime(!realtime)">Realtime</v-btn>
+        <!-- <v-btn :disabled="loading" :color="realtime ? 'red' : ''" :dark="realtime" @click="setRealTime(!realtime)">Realtime</v-btn> -->
       </v-col>
     </v-row>
 

@@ -151,7 +151,7 @@ export default {
 
   mounted() {
     this.initializeADHconfig();
-    this.startTokenRefreshChecker();
+    // this.startTokenRefreshChecker();
   },
   beforeDestroy() {
     clearInterval(this.tokenRefreshInterval);
@@ -201,11 +201,11 @@ export default {
         if (storage && storage.token) {
           this.makeAuthenticatedRequest(storage.token);
         } else {
-          this.showUnauthorizedDialog();
+          // this.showUnauthorizedDialog();
         }
       } catch (error) {
         console.error('Error refreshing tokens:', error);
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
 
@@ -239,7 +239,7 @@ export default {
         });
         this.adh_config = response.data;
       } catch (err) {
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
 

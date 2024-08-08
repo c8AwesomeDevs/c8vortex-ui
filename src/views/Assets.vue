@@ -829,7 +829,7 @@
             <v-textarea color="red" no-resize label="Description" hide-details rows="3" v-model="new_element.description"></v-textarea>
           </div>
           <div class="my-2">
-            <v-checkbox v-if="elements == 1" color="red" label="Create DGA Attribute Templates" v-model="new_element.template_created"></v-checkbox>
+            <v-checkbox v-if="elements == 1" disabled color="red" label="Create DGA Attribute Templates" v-model="new_element.template_created"></v-checkbox>
           </div>
         </v-card-text>
         <v-card-actions>
@@ -1018,6 +1018,26 @@
         </v-card>
       </template>
     </v-dialog>
+
+    <v-dialog v-model="validation_dialog_adh" max-width="450" min-width="400">
+      <template>
+        <v-card>
+          <div>
+            <span>
+              <v-icon color="orange" class="icon ml-3 mt-3"> mdi-alert-circle-outline </v-icon>
+              <span class="demo-check">
+                {{ dialogMessage }}
+              </span>
+            </span>
+          </div>
+          <v-card-actions class="justify-end">
+            <v-btn dark small color="red" text @click="validation_dialog_adh = false">Cancel </v-btn>
+          <v-spacer></v-spacer>
+            <v-btn dark small color="#60ab91" text @click="goToADG()">Generate</v-btn>
+          </v-card-actions>
+        </v-card>
+      </template>
+    </v-dialog>
     <v-dialog v-model="success_dialog" max-width="450" min-width="400">
       <template>
         <v-card>
@@ -1194,6 +1214,7 @@ export default {
       loading: false,
       save_loading: false,
       validation_dialog: false,
+      validation_dialog_adh: false,
       success_dialog: false,
       dialogMessage: "",
       dialogTitle: "",
@@ -1253,7 +1274,7 @@ export default {
     this.initializeAssets();
     this.reversedYearsList;
     this.symbol = this.symbols[0];
-    this.startTokenRefreshChecker();
+    // this.startTokenRefreshChecker();
   },
   beforeDestroy() {
     clearInterval(this.tokenRefreshInterval); // Clear interval when component is destroyed
@@ -1349,7 +1370,7 @@ export default {
         this.items = response.data;
         this.account_level = JSON.parse(localStorage.getItem("user")).user.account_level;
       } catch (err) {
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
 
@@ -1364,11 +1385,11 @@ export default {
         if (storage && storage.token) {
           await this.makeAuthenticatedRequest(storage.token, userId);
         } else {
-          this.showUnauthorizedDialog();
+          // this.showUnauthorizedDialog();
         }
       } catch (error) {
         console.error('Error refreshing tokens:', error);
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
 
@@ -1426,7 +1447,7 @@ export default {
     },
     showgassesdata_dialog() {
        if(this.adh_config.length == 0){
-            this.validation_dialog = true;
+            this.validation_dialog_adh = true;
             this.dialogMessage = "Please generate ADH configurations first."
             return;
           }else{
@@ -2067,6 +2088,9 @@ export default {
         // Set the loading flag to false
         this.loading = false;
       }, 1000);
+    },
+    goToADG(){
+      this.$router.push({ name: 'ADH Configurations' })
     },
   },
 };

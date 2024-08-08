@@ -281,7 +281,7 @@ export default {
     // } else {
     //   this.checkSub("advanced");
     // }
-    this.startTokenRefreshChecker();
+    // this.startTokenRefreshChecker();
   },
   beforeDestroy() {
     clearInterval(this.tokenRefreshInterval); // Clear interval when component is destroyed
@@ -348,7 +348,7 @@ export default {
     async checkSub(type) {
       const storage = JSON.parse(localStorage.getItem("user"));
       if (!storage || !storage.user) {
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
         return;
       }
 
@@ -373,7 +373,7 @@ export default {
         }
       } catch (error) {
         console.error('Check subscription error:', error);
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
     async refreshTokenAndCheckSub(type) {
@@ -383,11 +383,11 @@ export default {
         if (updatedStorage && updatedStorage.token) {
           await this.makeCheckSubRequest(type, updatedStorage.token);
         } else {
-          this.showUnauthorizedDialog();
+          // this.showUnauthorizedDialog();
         }
       } catch (error) {
         console.error('Error refreshing token:', error);
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
     async refreshToken() {
@@ -405,7 +405,7 @@ export default {
         this.updateToken(id_token);
       } catch (error) {
         console.error('Error refreshing Google token:', error);
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
     async refreshMicrosoftToken() {

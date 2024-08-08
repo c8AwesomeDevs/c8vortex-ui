@@ -313,7 +313,7 @@ export default {
   },
   mounted() {
     this.initializeUsers();
-    this.startTokenRefreshChecker();
+    // this.startTokenRefreshChecker();
   },
   beforeDestroy() {
     clearInterval(this.tokenRefreshInterval); // Clear interval when component is destroyed
@@ -368,11 +368,11 @@ export default {
             this.makeAuthenticatedRequest(storage.token, userId);
           }
         } else {
-          this.showUnauthorizedDialog();
+          // this.showUnauthorizedDialog();
         }
       } catch (error) {
         console.error('Error refreshing tokens:', error);
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
 
@@ -419,7 +419,7 @@ export default {
           return u;
         });
       } catch (err) {
-        this.showUnauthorizedDialog();
+        // this.showUnauthorizedDialog();
       }
     },
 
