@@ -27,7 +27,7 @@
       </v-col>
       <v-divider vertical></v-divider>
       <v-col cols="12" sm="6" md="10" class="pl-1 pb-0">
-        <v-progress-linear v-if="loading" indeterminate color="#60ab91"></v-progress-linear>
+        <v-progress-linear v-if="loading || loadingattributevalues" indeterminate color="#60ab91"></v-progress-linear>
         <!-- tabs -->
         <v-tabs  color="#60ab91" v-model="tab" :value="tab" left>
           <v-tabs-slider color=""></v-tabs-slider>
@@ -564,7 +564,7 @@
 
               <v-row dense>
                 <v-col cols="12" sm="8">
-                  <DateRangePickers storageID="dgaAnalysisPicker" @filter="filter" />
+                  <DateRangePickers storageID="dgaAnalysisPicker" @filter="filter" :loadingattributevalues="loadingattributevalues" />
                 </v-col>
                 <v-col class="mt-2" cols="12" sm="4">
                   <v-row dense>
@@ -572,7 +572,7 @@
                     <v-col cols="12" sm="5">
                         <v-menu offset-y>
                           <template v-slot:activator="{ on, attrs }">
-                            <v-btn v-bind="attrs" v-on="on" :disabled="loading">
+                            <v-btn v-bind="attrs" v-on="on" :disabled="loading || loadingattributevalues">
                               <span v-if="!loading">Export</span>
                               <span v-else>Exporting...</span>
                               <v-icon v-if="!loading" class="">mdi-folder-arrow-down-outline</v-icon>
@@ -1212,6 +1212,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadingattributevalues: false,
       save_loading: false,
       validation_dialog: false,
       validation_dialog_adh: false,
@@ -1321,6 +1322,7 @@ export default {
     },
     element() {
       this.getAttributeValues(this.element.id);
+      this.loadingattributevalues = false;
     },
   },
   
@@ -1529,6 +1531,7 @@ export default {
           this.loading = false;
         });
       this.getAttributeValues(this.element.id);
+      this.loadingattributevalues = false;
     },
     addRootElement() {
       // this.count = elements;
@@ -1775,6 +1778,7 @@ export default {
             this.attribute_value = {};
             // this.flipper = !this.flipper;
             this.getAttributeValues(this.element.id);
+            this.loadingattributevalues = false;
           })
           .catch((err) => {
             // console.log(err.response);
@@ -1910,6 +1914,7 @@ export default {
     },
 
     getAttributeValues(elementID) {
+      this.loadingattributevalues = true;
       if (elementID !== null && this.datetime1 !== null && this.datetime2 !== null) {
         // let curr = new Date("2023-07-30");
         // // format the dates; this is atrocious; pls help me format these
@@ -2025,9 +2030,11 @@ export default {
 
             this.svgs = res.data.svgs;
             // console.log(this.current);
+            this.loadingattributevalues = false;
           })
           .catch((err) => {
             console.log(err);
+            this.loadingattributevalues = false;
           });
       } else {
         return;

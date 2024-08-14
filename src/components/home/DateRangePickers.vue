@@ -21,15 +21,15 @@
 
     <v-row dense>
       <v-col cols="12" sm="4">
-        <v-text-field :disabled="loading" dense color="red" hint="YYYY-MM-DD HH:MM:SS" persistent-hint outlined label="Start" append-icon="mdi-calendar"  @click:append="openDatePicker('date1')" v-model="datetime1">
+        <v-text-field :disabled="loadingattributevalues" dense color="red" hint="YYYY-MM-DD HH:MM:SS" persistent-hint outlined label="Start" append-icon="mdi-calendar"  @click:append="openDatePicker('date1')" v-model="datetime1">
       </v-text-field>
       </v-col>
       <v-col cols="12" sm="4">
-        <v-text-field :disabled="loading" dense color="red" hint="YYYY-MM-DD HH:MM:SS" persistent-hint outlined label="End" append-icon="mdi-calendar"  @click:append="openDatePicker('date2')" v-model="datetime2">
+        <v-text-field :disabled="loadingattributevalues" dense color="red" hint="YYYY-MM-DD HH:MM:SS" persistent-hint outlined label="End" append-icon="mdi-calendar"  @click:append="openDatePicker('date2')" v-model="datetime2">
       </v-text-field>
       </v-col>
       <v-col class="mt-1" cols="12" sm="4">
-        <v-btn class="mr-1" :disabled="loading"  @click="emitFilter">Filter</v-btn>
+        <v-btn class="mr-1" :disabled="loadingattributevalues"  @click="emitFilter">Filter</v-btn>
         <!-- <v-btn :disabled="loading" :color="realtime ? 'red' : ''" :dark="realtime" @click="setRealTime(!realtime)">Realtime</v-btn> -->
       </v-col>
     </v-row>
@@ -45,8 +45,8 @@ import TimePicker from "@/components/pickers/TimePicker.vue";
 import { timeMixin } from "@/mixins/timeMixin.js";
 
 export default {
-  name: "DateRangePickers",
-  props: ["storageID", "loading"],
+  name: "DateRangePickers", 
+  props: ["storageID", "loadingattributevalues"],
   components: { DatePicker, TimePicker },
   mixins: [timeMixin],
   data() {

@@ -101,10 +101,10 @@ export default {
     return {
       rotate: false,
       small: {},
-      authCode: '',
-      accessToken: '',
-      id_token: '',
-      refreshToken: '',
+      authCode: null,
+      accessToken: null,
+      id_token: null,
+      refreshToken: null,
     };
   },
   watch: {
@@ -125,8 +125,9 @@ export default {
       const scope = process.env.VUE_APP_GOOGLE_SCOPE;
       const responseType = process.env.VUE_APP_GOOGLE_RESPONSE_TYPE;
       const accessType = process.env.VUE_APP_GOOGLE_ACCESS_TYPE;
+      const prompt = "consent"; // Explicitly request consent each time
 
-      const url = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&access_type=${accessType}`;
+      const url = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&access_type=${accessType}&prompt=${prompt}`;
       window.location.href = url;
     },
     async handleGoogleCallback() {
@@ -134,6 +135,7 @@ export default {
       const code = urlParams.get('code');
       if (code) {
         this.authCode = code;
+        console.log(this.authCode);
         await this.generateTokensAndProfile();
       }
     },

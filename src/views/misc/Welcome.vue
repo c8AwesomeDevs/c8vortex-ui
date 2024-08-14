@@ -413,10 +413,9 @@ export default {
 
       if (provider === "google") {
         this.googleLoading = true;
-        // console.log(response);
+        console.log(response);
         let token;
         let refresh_token;
-        let token_expiry;
 
         // if (response.Oc != undefined) {
         //     token = response.Oc.id_token || response.Jc.id_token;
@@ -432,12 +431,11 @@ export default {
         
         token = response.id_token;
         refresh_token = response.refreshToken;
-        token_expiry = response.token_expiry;
 
         axios({
             method: "POST",
             url: process.env.VUE_APP_BASEURL + "/google/auth",
-            data: { token: token, refresh_token: refresh_token, token_expiry: token_expiry },
+            data: { token: token, refresh_token: refresh_token },
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
         })
             .then((res) => {
