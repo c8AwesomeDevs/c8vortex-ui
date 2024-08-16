@@ -1522,7 +1522,7 @@ export default {
           this.stream_id = concatenatedPath.replace(/\\/g, '');
 
           // Output the result
-          console.log(this.stream_id);
+          // console.log(this.stream_id);
           this.tab = 2;
           this.loading = false;
         })

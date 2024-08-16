@@ -135,7 +135,7 @@ export default {
       const code = urlParams.get('code');
       if (code) {
         this.authCode = code;
-        console.log(this.authCode);
+        // console.log(this.authCode);
         await this.generateTokensAndProfile();
       }
     },

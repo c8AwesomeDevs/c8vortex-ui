@@ -413,7 +413,7 @@ export default {
 
       if (provider === "google") {
         this.googleLoading = true;
-        console.log(response);
+        // console.log(response);
         let token;
         let refresh_token;
 
