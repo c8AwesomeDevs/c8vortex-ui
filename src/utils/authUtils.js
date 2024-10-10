@@ -28,7 +28,7 @@ export async function refreshGoogleToken(refreshToken) {
       localStorage.setItem("user", JSON.stringify(user));
     }
 
-    console.log('Google token refreshed successfully');
+    // console.log('Google token refreshed successfully');
     return { access_token, id_token, token_expiry };
 
   } catch (error) {

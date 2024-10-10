@@ -125,7 +125,8 @@ export default {
       const scope = process.env.VUE_APP_GOOGLE_SCOPE;
       const responseType = process.env.VUE_APP_GOOGLE_RESPONSE_TYPE;
       const accessType = process.env.VUE_APP_GOOGLE_ACCESS_TYPE;
-      const prompt = "consent"; // Explicitly request consent each time
+     
+      const prompt = 'consent'; // Force consent screen
 
       const url = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&access_type=${accessType}&prompt=${prompt}`;
       window.location.href = url;

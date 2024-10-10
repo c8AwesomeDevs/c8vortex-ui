@@ -1286,20 +1286,45 @@ export default {
     computedAge() {
       this.startUp = this.date ? new Date(this.date) : new Date();
       this.currentDate = new Date();
+
+      // Calculate the year difference
       this.age = this.currentDate.getFullYear() - this.startUp.getFullYear();
+      
+      // Calculate the months difference
+      this.months = this.currentDate.getMonth() - this.startUp.getMonth();
+      
+      const commissioningDay = this.startUp.getDate();
+      const currentDay = this.currentDate.getDate();
+      
+      // Adjust the age if the current date is before the commissioning date in the current year
+      if (this.months < 0 || (this.months === 0 && currentDay < commissioningDay)) {
+          this.age--;
+          this.months = (12 + this.months) % 12;
+      }
+
+      // If the commissioning year is less than 1 year ago, calculate the total days difference
+      if (this.age === 0) {
+          const oneDay = 24 * 60 * 60 * 1000; // Milliseconds in a day
+          const daysDifference = Math.round(Math.abs((this.currentDate - this.startUp) / oneDay));
+          return `${this.age} year(s) | Age Band: 0-17 | ${daysDifference} day(s)`;
+      }
+
+      // Determine age band
       this.ageBand = "";
       if (this.age >= 0 && this.age < 18) {
-        this.ageBand = "0-17";
+          this.ageBand = "0-17";
       } else if (this.age >= 18 && this.age < 25) {
-        this.ageBand = "18-24";
+          this.ageBand = "18-24";
       } else if (this.age >= 25 && this.age < 35) {
-        this.ageBand = "25-34";
+          this.ageBand = "25-34";
       } else if (this.age >= 35 && this.age < 50) {
-        this.ageBand = "35-49";
+          this.ageBand = "35-49";
       } else {
-        this.ageBand = "50+";
+          this.ageBand = "50+";
       }
-      return `${this.age} Yr | ${this.ageBand} Yrs`;
+
+      return `${this.age} year(s) | Age Band: ${this.ageBand}`;
+    
     },
     reversedYearsList() {
       // this.yearsList = Array.from({ length: new Date().getFullYear() - 1900 + 1 }, (_, i) => 1900 + i)
@@ -1482,9 +1507,14 @@ export default {
        
           this.element = response.data.details;
           this.transformers = response.data.transformers;
-          // Filter the transformers based on company_id
-          // this.transformers = transformers.filter(transformer => transformer.company_id === this.element.company_id);
+          // console.log(this.element);
+        
+          // Filter the transformers based on element_id
+          this.transformers = this.transformers.filter(transformer => parseInt(transformer.parent_id, 10) === this.element.id);
+          // console.log(this.transformers);
           this.elements = response.data.details.path.split("\\").length - 1;
+
+          // console.log(this.elements);
           this.attributes = response.data.attributes;
           this.attribute_values = response.data.attribute_values;
           this.attribute_value_length = this.attribute_values.length;
@@ -1660,7 +1690,7 @@ export default {
         .then((res) => {
           this.save_loading = false;
           this.items = res.data;
-          console.log(this.items);
+          // console.log(this.items);
           this.element_dialog = false;
           this.rootElement_dialog = false;
           if(this.elements == 0){
@@ -1840,7 +1870,7 @@ export default {
           //   this.dialogMessage = "Please create ADH Configurations first."
           //   return;
           // }
-          this.transformer = {};
+          // this.transformer = {};
           this.date = null;
           this.selectedCountry = null;
           this.selectedConstructionYear = null;
